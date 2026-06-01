@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+  # Banco de Dados PostgreSQL 15
+  postgres:
+    image: postgres:15-alpine
+    container_name: sgip-postgres
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: previdencia123
+      POSTGRES_DB: sgip_rpps
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/1-schema.sql
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/2-seed.sql
+
+  # Servidor Backend (NestJS / API)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: sgip-backend
+    restart: always
+    ports:
+      - "5000:5000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://postgres:previdencia123@postgres:5432/sgip_rpps
+      JWT_SECRET: PrevidênciaMunicipalSgipTokenJWT2026!
+      PORT: 5000
+    depends_on:
+      - postgres
+
+  # Servidor Frontend (React / Client)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: sgip-frontend
+    restart: always
+    ports:
+      - "80:80"
+    environment:
+      VITE_API_URL: http://localhost:5000/api
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:
+    driver: local

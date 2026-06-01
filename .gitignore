@@ -1,0 +1,23 @@
+# Dependências de Node.js
+**/node_modules/
+**/dist/
+**/build/
+.tsbuildinfo
+
+# Bancos de Dados Locais (SQLite Fallback)
+**/*.db
+**/*.db-journal
+**/*.sqlite
+
+# Variáveis de Ambiente e Logs de Auditoria
+**/.env
+**/.env.local
+**/*.log
+**/logs/
+.system_generated/
+
+# Pastas de IDE e Sistema Operacional
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
