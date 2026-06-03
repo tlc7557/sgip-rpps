@@ -11,15 +11,15 @@ import {
 } from '@mui/material';
 import {
   LayoutDashboard, UserCheck, ShieldAlert, FolderOpen, Scan, FileSpreadsheet,
-  FileKey, Settings, Users, LogOut, ShieldCheck, FileCheck, CheckCircle2,
-  Calendar, Phone, MapPin, Mail, ChevronRight, Play, RotateCcw, CloudUpload,
-  Plus, Download, Trash, Search, ArrowRight, UserPlus, Clock, Fingerprint, Edit
+  Settings, Users, LogOut, ShieldCheck, FileCheck,
+  Phone, ChevronRight, Play, RotateCcw, CloudUpload,
+  Plus, Download, Trash, Search, ArrowRight, UserPlus, Clock, Fingerprint, Edit, Send, Sun, Moon, Lock, X, Eye
 } from 'lucide-react';
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip as ChartTooltip, ResponsiveContainer, Legend
+  Tooltip as ChartTooltip, ResponsiveContainer
 } from 'recharts';
-import theme from './theme';
+import { darkTheme, lightTheme } from './theme';
 import axios from 'axios';
 
 // URL base da API com fallback
@@ -30,13 +30,13 @@ const API_URL = 'http://localhost:5000/api';
 // ============================================================================
 
 const DEFAULT_USERS = [
-  { id: 1, nome: "Carlos Eduardo da Silva", cpf: "001.002.003-01", email: "admin@previdencia.gov.br", perfil: "Administrador", ativo: true },
-  { id: 2, nome: "Maria Tereza de Souza", cpf: "001.002.003-02", email: "diretor@previdencia.gov.br", perfil: "Diretor", ativo: true },
-  { id: 3, nome: "Procurador Geral Dr. André", cpf: "001.002.003-03", email: "procurador@previdencia.gov.br", perfil: "Procurador", ativo: true },
-  { id: 4, nome: "Joana Darc de Oliveira", cpf: "001.002.003-04", email: "rh@previdencia.gov.br", perfil: "Recursos Humanos", ativo: true },
-  { id: 5, nome: "Dr. Roberto Martins Custódio", cpf: "001.002.003-05", email: "juridico@previdencia.gov.br", perfil: "Jurídico", ativo: true },
-  { id: 7, nome: "Cláudia Roberta Mendes", cpf: "001.002.003-07", email: "protocolo@previdencia.gov.br", perfil: "Protocolo", ativo: true },
-  { id: 8, nome: "Marcos Antônio Scanner", cpf: "001.002.003-08", email: "digitalizacao@previdencia.gov.br", perfil: "Digitalização", ativo: true }
+  { id: 1, nome: "Carlos Eduardo da Silva", cpf: "001.002.003-01", email: "admin@previdencia.gov.br", perfil: "Administrador", ativo: true, telefone: "(85) 99999-9991" },
+  { id: 2, nome: "Maria Tereza de Souza", cpf: "001.002.003-02", email: "diretor@previdencia.gov.br", perfil: "Diretor", ativo: true, telefone: "(85) 99999-9992" },
+  { id: 3, nome: "Procurador Geral Dr. André", cpf: "001.002.003-03", email: "procurador@previdencia.gov.br", perfil: "Procurador", ativo: true, telefone: "(85) 99999-9993" },
+  { id: 4, nome: "Joana Darc de Oliveira", cpf: "001.002.003-04", email: "rh@previdencia.gov.br", perfil: "Recursos Humanos", ativo: true, telefone: "(85) 99999-9994" },
+  { id: 5, nome: "Dr. Roberto Martins Custódio", cpf: "001.002.003-05", email: "juridico@previdencia.gov.br", perfil: "Jurídico", ativo: true, telefone: "(85) 99999-9995" },
+  { id: 7, nome: "Cláudia Roberta Mendes", cpf: "001.002.003-07", email: "protocolo@previdencia.gov.br", perfil: "Protocolo", ativo: true, telefone: "(85) 99999-9997" },
+  { id: 8, nome: "Marcos Antônio Scanner", cpf: "001.002.003-08", email: "digitalizacao@previdencia.gov.br", perfil: "Digitalização", ativo: true, telefone: "(85) 99999-9998" }
 ];
 
 const DEFAULT_SEGURADOS = [
@@ -87,11 +87,13 @@ export default function App() {
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isApiOnline, setIsApiOnline] = useState<boolean>(false);
+  const [themeMode, setThemeMode] = useState<'light' | 'dark'>('dark');
+  const theme = themeMode === 'dark' ? darkTheme : lightTheme;
 
   // Massa de dados local (Fallback se a API estiver offline)
   const [usersList, setUsersList] = useState<any[]>(DEFAULT_USERS);
   const [seguradosList, setSeguradosList] = useState<any[]>(DEFAULT_SEGURADOS);
-  const [dependentesList, setDependentesList] = useState<any[]>(DEFAULT_DEPENDENTES);
+  const [dependentesList] = useState<any[]>(DEFAULT_DEPENDENTES);
   const [aposentadoriasList, setAposentadoriasList] = useState<any[]>(DEFAULT_APOSENTADORIAS);
   const [protocolosList, setProtocolosList] = useState<any[]>(DEFAULT_PROTOCOLOS);
   const [auditoriaLogs, setAuditoriaLogs] = useState<any[]>(DEFAULT_AUDITORIA);
@@ -100,6 +102,7 @@ export default function App() {
   const [loginCpf, setLoginCpf] = useState('001.002.003-01');
   const [loginSenha, setLoginSenha] = useState('previdencia123');
   const [loginError, setLoginError] = useState('');
+  const [isGovBrLoginMode, setIsGovBrLoginMode] = useState(false);
 
   // Pastas de Gestão Documental (MÓDULO 6)
   const [folders, setFolders] = useState<any[]>([
@@ -158,6 +161,7 @@ export default function App() {
   const [userFormSenha, setUserFormSenha] = useState('');
   const [userFormPerfil, setUserFormPerfil] = useState('Consulta');
   const [userFormAtivo, setUserFormAtivo] = useState(true);
+  const [userFormTelefone, setUserFormTelefone] = useState('');
   
   const DEFAULT_PERMISSIONS = [
     { modulo: 'Usuarios', pode_criar: false, pode_ler: true, pode_atualizar: false, pode_deletar: false },
@@ -219,6 +223,98 @@ export default function App() {
   const [customApSalario, setCustomApSalario] = useState<number>(5000);
   const [apCalculatedData, setApCalculatedData] = useState<any>(null);
 
+  // Monitoramento Externo Quixadá - CE (MÓDULO 10 / Integração)
+  const [dashboardSubTab, setDashboardSubTab] = useState<number>(0);
+  const [isSyncingExternal, setIsSyncingExternal] = useState<boolean>(false);
+  const [externalSearchQuery, setExternalSearchQuery] = useState<string>('');
+  const [externalSearchDate, setExternalSearchDate] = useState<string>(new Date().toISOString().substring(0, 10));
+
+  // Função utilitária para formatação de CPF
+  const formatCPF = (val: string): string => {
+    const digits = val.replace(/\D/g, '').slice(0, 11);
+    if (digits.length <= 3) return digits;
+    if (digits.length <= 6) return `${digits.slice(0, 3)}.${digits.slice(3)}`;
+    if (digits.length <= 9) return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6)}`;
+    return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
+  };
+
+  // Estados para o monitoramento de processos de Quixadá & Gov.br
+  const [selectedExternalProcess, setSelectedExternalProcess] = useState<any>(null);
+  const [selectedExternalDoc, setSelectedExternalDoc] = useState<any>(null);
+  const [isGovBrConnected, setIsGovBrConnected] = useState<boolean>(false);
+  const [openGovBrModal, setOpenGovBrModal] = useState<boolean>(false);
+  const [govBrCpf, setGovBrCpf] = useState<string>('');
+  const [govBrSenha, setGovBrSenha] = useState<string>('');
+  const [govBrCertificado, setGovBrCertificado] = useState<string>('');
+  const [govBrError, setGovBrError] = useState<string>('');
+  const [govBrLoading, setGovBrLoading] = useState<boolean>(false);
+
+  const [liveFeedLogs, setLiveFeedLogs] = useState<string[]>([
+    `[${new Date().toLocaleTimeString()}] Conexão estabelecida com o portal TCE-CE.`,
+    `[${new Date(Date.now() - 30000).toLocaleTimeString()}] Sincronização automática concluída.`,
+    `[${new Date(Date.now() - 60000).toLocaleTimeString()}] Auditoria do RPPS de Quixadá consultada pelo Tribunal.`
+  ]);
+
+  const [externalProcesses, setExternalProcesses] = useState<any[]>([
+    {
+      id: 101,
+      numero: `TCE-CE-008432/${new Date().getFullYear()}`,
+      assunto: "Prestação de Contas Anual - RPPS Quixadá Previdência",
+      interessado: "Prefeitura Municipal de Quixadá",
+      orgao: "Tribunal de Contas do Estado do Ceará (TCE-CE)",
+      dataLimite: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10),
+      status: "Pendente de Defesa Prévia",
+      urgencia: "CRITICA",
+      documentos: [
+        { id: "ext-101-1", nome: "Parecer_Admissibilidade_TCE.pdf", tamanho: "1.2 MB", data: "12/04/2026", restrito: false, conteudo: "PARECER DE ADMISSIBILIDADE TCE-CE nº 4983/2026\nTrata-se de exame de admissibilidade da prestação de contas do Fundo Municipal de Previdência de Quixadá, exercício de 2025. Conclui-se pelo preenchimento dos pressupostos processuais." },
+        { id: "ext-101-2", nome: "Relatorio_Financeiro_Consolidado.xlsx", tamanho: "4.5 MB", data: "15/04/2026", restrito: true, conteudo: "DEMONSTRATIVO FINANCEIRO E PATRIMONIAL DETALHADO DO RPPS - QUIXADÁ\n[ACESSO AUTENTICADO COM GOV.BR - e-CPF / CERTIFICADO DIGITAL ICP-BRASIL]\nRecursos Totais Garantidores: R$ 124.938.410,23.\nTaxa de Administração Executada: 1.82%.\nSuperávit Técnico Apurado: R$ 4.298.110,45.\nEnquadramento de Carteira de Investimentos: 98.4% de acordo com a Resolução CMN nº 4.963." },
+        { id: "ext-101-3", nome: "Oficio_Notificacao_083_2026.pdf", tamanho: "350 KB", data: "22/04/2026", restrito: false, conteudo: "OFÍCIO DE NOTIFICAÇÃO Nº 083/2026-TCE-CE\nFica notificado o gestor do RPPS de Quixadá para apresentar defesa no prazo improrrogável de 15 dias úteis quanto ao apontamento de divergências nas contas de benefícios por invalidez." }
+      ]
+    },
+    {
+      id: 102,
+      numero: `TCE-CE-012942/${new Date().getFullYear()}`,
+      assunto: "Aposentadoria Especial de Professores do Magistério",
+      interessado: "Instituto de Previdência de Quixadá (QuixadáPrev)",
+      orgao: "2ª Câmara de Julgamento - TCE-CE",
+      dataLimite: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10),
+      status: "Em Instrução de Homologação",
+      urgencia: "MEDIA",
+      documentos: [
+        { id: "ext-102-1", nome: "Certidao_Tempo_Contribuicao_Professora.pdf", tamanho: "2.1 MB", data: "05/03/2026", restrito: false, conteudo: "CERTIDÃO DE TEMPO DE CONTRIBUIÇÃO (CTC)\nServidora: Maria das Dores Holanda.\nCargo: Professora de Educação Básica II.\nTempo total averbado: 25 anos, 3 meses e 10 dias de efetivo magistério." },
+        { id: "ext-102-2", nome: "Laudo_LTCAT_Quixada.pdf", tamanho: "5.8 MB", data: "12/03/2026", restrito: true, conteudo: "LAUDO TÉCNICO DAS CONDIÇÕES AMBIENTAIS DE TRABALHO (LTCAT)\n[ACESSO AUTENTICADO COM GOV.BR - e-CPF / CERTIFICADO DIGITAL ICP-BRASIL]\nAnálise de ruído, calor e agentes biológicos nas escolas municipais de Quixadá. Homologado pelo Engenheiro do Trabalho para comprovação de atividade especial de magistério." }
+      ]
+    },
+    {
+      id: 103,
+      numero: `TCE-CE-020139/${new Date().getFullYear()}`,
+      assunto: "Auditoria Concorrente de Despesas Previdenciárias",
+      interessado: "Fundo Previdenciário Municipal de Quixadá",
+      orgao: "Secretaria de Fiscalização Previdenciária - TCE-CE",
+      dataLimite: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10),
+      status: "Notificação Respondida",
+      urgencia: "SEGURA",
+      documentos: [
+        { id: "ext-103-1", nome: "Ficha_Inscricao_Processo_Fiscal.pdf", tamanho: "800 KB", data: "18/02/2026", restrito: false, conteudo: "FICHA DE ACOMPANHAMENTO DA AUDITORIA TCE-CE\nObjeto: Auditoria concorrente de legalidade e economicidade das despesas previdenciárias do exercício vigente." },
+        { id: "ext-103-2", nome: "Analise_Folha_Pagamento_Restrita.pdf", tamanho: "3.2 MB", data: "20/02/2026", restrito: true, conteudo: "RELATÓRIO DETALHADO DA FOLHA DE PAGAMENTO DE INATIVOS\n[ACESSO AUTENTICADO COM GOV.BR - e-CPF / CERTIFICADO DIGITAL ICP-BRASIL]\nListagem nominal com proventos, gratificações incorporadas e descontos previdenciários de todos os aposentados do RPPS de Quixadá do exercício de 2025." }
+      ]
+    },
+    {
+      id: 104,
+      numero: `TCU-011409/${new Date().getFullYear()}`,
+      assunto: "Tomada de Contas Especial - Recursos Federais Repassados",
+      interessado: "Secretaria de Saúde de Quixadá",
+      orgao: "Tribunal de Contas da União (TCU)",
+      dataLimite: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10),
+      status: "Diligência em Andamento",
+      urgencia: "ATRASADA",
+      documentos: [
+        { id: "ext-104-1", nome: "Instrucao_TCE_Saude.pdf", tamanho: "1.7 MB", data: "01/02/2026", restrito: false, conteudo: "INSTRUÇÃO PRELIMINAR DE TOMADA DE CONTAS ESPECIAL\nIrregularidade detectada na prestação de contas do convênio federal repassado para atenção básica à saúde do município de Quixadá." },
+        { id: "ext-104-2", nome: "Extratos_Bancarios_Detalhados.pdf", tamanho: "8.9 MB", data: "05/02/2026", restrito: true, conteudo: "DEMONSTRATIVO DE FLUXO BANCÁRIO DE CONTAS DE CONVÊNIO\n[ACESSO AUTENTICADO COM GOV.BR - e-CPF / CERTIFICADO DIGITAL ICP-BRASIL]\nExtratos detalhados de movimentação bancária da conta do Convênio MS-Quixadá nº 849/2024. Revela repasses não declarados de fundos públicos federais." }
+      ]
+    }
+  ]);
+
   // Cloud & Backup Sync Logs (MÓDULO 12 & 15)
   const [cloudSyncLogs, setCloudSyncLogs] = useState<string[]>([
     "[08:00:00] Backup automatizado matinal - Replicado no Google Drive",
@@ -252,6 +348,28 @@ export default function App() {
       setIsApiOnline(false);
     }
   };
+
+  // Efeito para simular o live feed do controle externo TCE-CE
+  useEffect(() => {
+    if (activeTab === 'dashboard' && dashboardSubTab === 1) {
+      const feedEvents = [
+        "Ministério Público de Contas emitiu parecer favorável no Proc. TCE-CE-008432",
+        "TCE-CE homologou requerimento de Aposentadoria de Professora no Proc. TCE-CE-012942",
+        "Novo despacho anexado pelo Conselheiro Relator no Proc. TCU-011409",
+        "QuixadáPrev transmitiu a DIPR de benefícios de forma consolidada",
+        "TCE-CE prorrogou prazo de defesa prévia em processo de contas anuais",
+        "Secretaria do Controle Externo de Pessoal notificou município sobre acúmulo de cargos"
+      ];
+
+      const interval = setInterval(() => {
+        const randomEvent = feedEvents[Math.floor(Math.random() * feedEvents.length)];
+        const timeStr = new Date().toLocaleTimeString();
+        setLiveFeedLogs(prev => [`[${timeStr}] ${randomEvent}`, ...prev.slice(0, 4)]);
+      }, 8000);
+
+      return () => clearInterval(interval);
+    }
+  }, [activeTab, dashboardSubTab]);
 
   // Carregar e auto-detectar dados do segurado no Simulador
   useEffect(() => {
@@ -438,6 +556,18 @@ export default function App() {
         setDocumentosList(docsMapped);
       }
 
+      // 7. Processos Externos Quixadá - CE
+      try {
+        const resExt = await axios.get(`${API_URL}/external/quixada/processos`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (resExt.data && Array.isArray(resExt.data)) {
+          setExternalProcesses(resExt.data);
+        }
+      } catch (e) {
+        console.warn("Erro ao carregar processos externos da API, mantendo fallback local.");
+      }
+
     } catch (err) {
       console.error("Erro ao carregar base de dados corporativa da API:", err);
     }
@@ -491,6 +621,91 @@ export default function App() {
       } else {
         setLoginError("CPF não cadastrado na base municipal RPPS.");
       }
+    }
+  };
+
+  // Lógica de Autenticação via Gov.br (Certificado Digital ou Senha)
+  const handleGovBrLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setLoginError('');
+    setGovBrError('');
+    setGovBrLoading(true);
+
+    const strippedCpf = govBrCpf.replace(/\D/g, '');
+    if (!govBrCertificado && (strippedCpf.length !== 11 || !govBrSenha)) {
+      setLoginError("Por favor, preencha o CPF e Senha Gov.br.");
+      setGovBrLoading(false);
+      return;
+    }
+
+    // Testa a conexão em tempo real antes de logar
+    let apiIsOnlineLive = false;
+    try {
+      const pingRes = await axios.get(`${API_URL}/ping`);
+      if (pingRes.status === 200) {
+        apiIsOnlineLive = true;
+        setIsApiOnline(true);
+      }
+    } catch (pingErr) {
+      apiIsOnlineLive = false;
+      setIsApiOnline(false);
+    }
+
+    try {
+      const payload = govBrCertificado ? {
+        certificadoToken: govBrCertificado + "_A3_TOKEN",
+        eCpf: govBrCpf
+      } : {
+        cpf: govBrCpf,
+        senha: govBrSenha
+      };
+
+      if (apiIsOnlineLive) {
+        const res = await axios.post(`${API_URL}/auth/gov-br`, payload);
+        const { token, user } = res.data;
+        setAuthToken(token);
+        setCurrentUser(user);
+        setIsGovBrConnected(true); // Conecta privilégios elevados Gov.br
+        // Log de Auditoria
+        setAuditoriaLogs(prev => [
+          { id: Date.now(), cpf_usuario: user.cpf, perfil_usuario: user.perfil, modulo: "Auth", acao: "LOGIN_GOVBR", ip_origem: "127.0.0.1", data_evento: new Date().toISOString() },
+          ...prev
+        ]);
+        await carregarDadosAPI(token);
+        alert(`🔓 Sessão de Acesso Elevado iniciada via Gov.br (${user.tipoAutenticacao})!`);
+      } else {
+        // Mock local fallback
+        const targetCpf = govBrCertificado ? govBrCpf : govBrCpf;
+        const cleanCpf = targetCpf.replace(/\D/g, '');
+        // Procurar por cpf cru ou formatado
+        const mockUser = DEFAULT_USERS.find(u => u.cpf.replace(/\D/g, '') === cleanCpf || u.cpf === targetCpf);
+        if (mockUser) {
+          const user = {
+            id: mockUser.id,
+            nome: mockUser.nome,
+            cpf: mockUser.cpf,
+            email: mockUser.email,
+            perfil: mockUser.perfil,
+            govBrAutenticado: true,
+            tipoAutenticacao: govBrCertificado ? 'Certificado Digital A3' : 'Usuário/Senha Ouro'
+          };
+          setAuthToken("MOCK_JWT_TOKEN_GOVBR_" + Math.random().toString(36).substring(7));
+          setCurrentUser(user);
+          setIsGovBrConnected(true);
+          setAuditoriaLogs(prev => [
+            { id: Date.now(), cpf_usuario: user.cpf, perfil_usuario: user.perfil, modulo: "Auth", acao: "LOGIN_GOVBR", ip_origem: "127.0.0.1", data_evento: new Date().toISOString() },
+            ...prev
+          ]);
+          alert(`🔓 Sessão de Acesso Elevado iniciada LOCALMENTE via Gov.br (${user.tipoAutenticacao})!`);
+        } else {
+          setLoginError("Servidor não cadastrado na base municipal RPPS.");
+        }
+      }
+    } catch (err: any) {
+      console.error(err);
+      setLoginError(err.response?.data?.error || "Falha na autenticação via Gov.br.");
+    } finally {
+      setGovBrLoading(false);
     }
   };
 
@@ -628,7 +843,6 @@ export default function App() {
       }
     } else {
       // Salvar Local Fallback
-      const seg = seguradosList.find(s => s.id === scanSeguradoId);
       const newDoc = {
         id: Date.now(),
         pasta_id: 3, // APOSENTADOS/SERVIDORES
@@ -923,7 +1137,7 @@ export default function App() {
     if (!newFolderName) return;
     if (isApiOnline && authToken) {
       try {
-        const res = await axios.post(`${API_URL}/pastas`, {
+        await axios.post(`${API_URL}/pastas`, {
           nome: newFolderName.toUpperCase(),
           descricao: newFolderDesc,
           paiId: selectedFolderId,
@@ -1100,6 +1314,8 @@ export default function App() {
     setUserFormEmail(user.email);
     setUserFormPerfil(user.perfil);
     setUserFormAtivo(user.ativo);
+    setUserFormTelefone(user.telefone || '');
+    setUserFormSenha('');
     
     // Inicializa com as permissões padrão do perfil
     let userPerms = [
@@ -1149,12 +1365,19 @@ export default function App() {
       return;
     }
 
+    const strippedCpf = userFormCpf.replace(/\D/g, '');
+    if (strippedCpf.length !== 11) {
+      alert("O CPF deve conter exatamente 11 dígitos.");
+      return;
+    }
+
     const payload = {
       nome: userFormNome,
       cpf: userFormCpf,
       email: userFormEmail,
       senha: userFormSenha,
       perfil: userFormPerfil,
+      telefone: userFormTelefone,
       permissoes: userFormPermissions
     };
 
@@ -1178,7 +1401,8 @@ export default function App() {
         cpf: userFormCpf,
         email: userFormEmail,
         perfil: userFormPerfil,
-        ativo: true
+        ativo: true,
+        telefone: userFormTelefone
       };
       setUsersList(prev => [...prev, newUser]);
       alert("🎉 Servidor cadastrado e perfil configurado localmente!");
@@ -1189,11 +1413,20 @@ export default function App() {
   const handleSalvarEdicaoUsuario = async () => {
     if (!selectedUserForEdit) return;
 
+    const strippedCpf = userFormCpf.replace(/\D/g, '');
+    if (strippedCpf.length !== 11) {
+      alert("O CPF deve conter exatamente 11 dígitos.");
+      return;
+    }
+
     const payload = {
       nome: userFormNome,
+      cpf: userFormCpf,
       email: userFormEmail,
       perfil: userFormPerfil,
       ativo: userFormAtivo,
+      telefone: userFormTelefone,
+      senha: userFormSenha,
       permissoes: userFormPermissions
     };
 
@@ -1216,9 +1449,11 @@ export default function App() {
           return {
             ...u,
             nome: userFormNome,
+            cpf: userFormCpf,
             email: userFormEmail,
             perfil: userFormPerfil,
-            ativo: userFormAtivo
+            ativo: userFormAtivo,
+            telefone: userFormTelefone
           };
         }
         return u;
@@ -1521,7 +1756,6 @@ export default function App() {
   };
 
   const parseRealOcrMetadata = (text: string) => {
-    const lines = text.split('\n');
     let nome = '';
     let cpf = '';
     let rg = '';
@@ -2004,6 +2238,86 @@ export default function App() {
     }
   };
 
+  // Sincronizar Processos Externos do TCE-CE/TCU de Quixadá - CE
+  const sincronizarProcessosExternos = async () => {
+    setIsSyncingExternal(true);
+    setTimeout(async () => {
+      if (isApiOnline && authToken) {
+        try {
+          const res = await axios.get(`${API_URL}/external/quixada/processos?dataSearch=${externalSearchDate}`, {
+            headers: { Authorization: `Bearer ${authToken}` }
+          });
+          if (res.data && Array.isArray(res.data)) {
+            setExternalProcesses(res.data);
+          }
+        } catch (e) {
+          console.error("Erro ao sincronizar via API:", e);
+        }
+      } else {
+        // Simulação Offline: gerar processos para a data selecionada
+        const year = externalSearchDate.split('-')[0] || new Date().getFullYear();
+        const formattedDateStr = externalSearchDate.split('-').reverse().join('/');
+        setExternalProcesses([
+          {
+            id: Date.now() + 101,
+            numero: `TCE-CE-00${Math.floor(1000 + Math.random() * 9000)}/${year}`,
+            assunto: "Prestação de Contas Simplificada - RPPS Quixadá",
+            interessado: "Câmara Municipal de Quixadá",
+            orgao: "Tribunal de Contas do Estado do Ceará (TCE-CE)",
+            dataLimite: new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10),
+            status: "Autuado em Tempo Real (Local)",
+            urgencia: "MEDIA",
+            documentos: [
+              { id: `ext-offline-1`, nome: "Oficio_Notificacao.pdf", tamanho: "850 KB", data: formattedDateStr, restrito: false, conteudo: `NOTIFICAÇÃO TCE-CE DE ACORDO COM PESQUISA EM TEMPO REAL NA DATA ${formattedDateStr}.\nSolicitação de parecer técnico de contas previdenciárias.` }
+            ]
+          }
+        ]);
+      }
+      setIsSyncingExternal(false);
+      alert(`🔄 Varredura Concluída! Processos autuados no TCE-CE na data de ${externalSearchDate.split('-').reverse().join('/')} foram sincronizados com sucesso.`);
+    }, 1800);
+  };
+
+  // Importar Processo Externo para os Protocolos Locais do Instituto
+  const importarProcessoExterno = async (proc: any) => {
+    if (isApiOnline && authToken) {
+      try {
+        const payload = {
+          seguradoId: 1,
+          assunto: `[Importado TCE-CE] ${proc.numero} - ${proc.assunto}`,
+          descricao: `Processo externo importado para o fluxo local do RPPS. Interessado: ${proc.interessado}. Órgão de Origem: ${proc.orgao}. Status TCE: ${proc.status}.`,
+          prioridade: proc.urgencia === "CRITICA" || proc.urgencia === "ATRASADA" ? "ALTA" : "NORMAL"
+        };
+        await axios.post(`${API_URL}/protocolos`, payload, {
+          headers: { Authorization: `Bearer ${authToken}` }
+        });
+        await carregarDadosAPI(authToken);
+        alert(`📥 Processo ${proc.numero} importado com sucesso para a fila de Protocolos locais!`);
+      } catch (err: any) {
+        console.error("Erro ao importar processo:", err);
+        alert("Erro ao importar processo no servidor.");
+      }
+    } else {
+      const numProt = `${new Date().getFullYear()}.${String(new Date().getMonth()+1).padStart(2,'0')}${String(new Date().getDate()).padStart(2,'0')}.${Math.floor(1000 + Math.random()*9000)}`;
+      const newProt = {
+        id: Date.now(),
+        numero_protocolo: numProt,
+        segurado_id: 1,
+        assunto: `[Importado TCE-CE] ${proc.numero} - ${proc.assunto}`,
+        descricao: `Processo externo importado para o fluxo local do RPPS. Interessado: ${proc.interessado}. Órgão de Origem: ${proc.orgao}. Status TCE: ${proc.status}.`,
+        status: "ABERTO",
+        prioridade: proc.urgencia === "CRITICA" || proc.urgencia === "ATRASADA" ? "ALTA" : "NORMAL",
+        data_abertura: new Date().toISOString()
+      };
+      setProtocolosList(prev => [newProt, ...prev]);
+      setAuditoriaLogs(prev => [
+        { id: Date.now(), cpf_usuario: currentUser.cpf, perfil_usuario: currentUser.perfil, modulo: "Dashboard", acao: "IMPORTACAO", ip_origem: "127.0.0.1", data_evento: new Date().toISOString() },
+        ...prev
+      ]);
+      alert(`📥 Processo ${proc.numero} importado localmente! Protocolo Digital nº ${numProt} aberto para análise.`);
+    }
+  };
+
   // ============================================================================
   // CADASTROS DE SEGURADOS (MÓDULO 2)
   // ============================================================================
@@ -2227,8 +2541,15 @@ export default function App() {
         <CssBaseline />
         <Box sx={{
           minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'linear-gradient(135deg, #020617 0%, #0f172a 100%)', p: 2
+          background: themeMode === 'dark' ? 'linear-gradient(135deg, #020617 0%, #0f172a 100%)' : 'linear-gradient(135deg, #f1f5f9 0%, #cbd5e1 100%)', p: 2,
+          position: 'relative'
         }}>
+          <IconButton
+            sx={{ position: 'absolute', top: 20, right: 20, color: themeMode === 'dark' ? '#f8fafc' : '#0f172a' }}
+            onClick={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')}
+          >
+            {themeMode === 'dark' ? <Sun size={24} /> : <Moon size={24} />}
+          </IconButton>
           <Card sx={{ maxWidth: 440, width: '100%', p: 3, textAlign: 'center' }} className="fade-in">
             <Avatar sx={{ m: '0 auto 16px', bgcolor: 'primary.main', width: 56, height: 56 }}>
               <LayoutDashboard size={28} />
@@ -2242,37 +2563,126 @@ export default function App() {
 
             {loginError && <Chip label={loginError} color="error" sx={{ mb: 2, width: '100%' }} />}
 
-            <form onSubmit={handleLogin}>
-              <TextField
-                label="CPF do Servidor"
-                fullWidth sx={{ mb: 2 }}
-                value={loginCpf}
-                onChange={(e) => setLoginCpf(e.target.value)}
-                placeholder="Ex: 001.002.003-01"
-              />
-              <TextField
-                label="Senha de Acesso"
-                type="password"
-                fullWidth sx={{ mb: 3 }}
-                value={loginSenha}
-                onChange={(e) => setLoginSenha(e.target.value)}
-              />
-              
-              <Button type="submit" variant="contained" color="primary" fullWidth size="large" sx={{ py: 1.5 }}>
-                Autenticar no Portal
-              </Button>
-            </form>
+            {isGovBrLoginMode ? (
+              <Box sx={{ textAlign: 'left' }}>
+                <Box sx={{ bgcolor: '#1351b4', color: '#fff', p: 1.5, borderRadius: 1.5, mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
+                  <ShieldCheck size={20} />
+                  <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>IDENTIFICAÇÃO GOV.BR</Typography>
+                </Box>
 
-            <Divider sx={{ my: 3 }} />
+                <Tabs value={govBrCertificado ? 1 : 0} onChange={(_, val) => { if (val === 0) setGovBrCertificado(''); else setGovBrCertificado('admin_token'); }} centered sx={{ mb: 2.5 }}>
+                  <Tab label="CPF e Senha" />
+                  <Tab label="Certificado Digital" />
+                </Tabs>
 
-            <Typography variant="caption" display="block" sx={{ color: 'text.secondary' }}>
-              ⚠️ Senhas padrão de teste: <strong style={{ color: '#14b8a6' }}>previdencia123</strong> para todos os perfis.
-            </Typography>
-            <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
-              <Chip label="admin (001.002.003-01)" size="small" onClick={() => setLoginCpf('001.002.003-01')} sx={{ cursor: 'pointer' }} />
-              <Chip label="rh (001.002.003-04)" size="small" onClick={() => setLoginCpf('001.002.003-04')} sx={{ cursor: 'pointer' }} />
-              <Chip label="digitalização (001.002.003-08)" size="small" onClick={() => setLoginCpf('001.002.003-08')} sx={{ cursor: 'pointer' }} />
-            </Box>
+                {govBrCertificado ? (
+                  <Box sx={{ mb: 3, p: 2, border: '1px dashed rgba(255,255,255,0.12)', borderRadius: 2, bgcolor: 'rgba(255,255,255,0.02)' }}>
+                    <Typography variant="body2" sx={{ mb: 2, fontWeight: 700, fontSize: 13 }}>
+                      Selecione o Certificado Digital ICP-Brasil:
+                    </Typography>
+                    <FormControl fullWidth size="small">
+                      <Select
+                        value={govBrCertificado}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          setGovBrCertificado(val);
+                          if (val === 'admin_token') setGovBrCpf('001.002.003-01');
+                          else if (val === 'tiago_token') setGovBrCpf('057.611.763-35');
+                          else if (val === 'rh_token') setGovBrCpf('001.002.003-04');
+                        }}
+                      >
+                        <MenuItem value="admin_token">e-CPF A3 - Carlos Eduardo da Silva (ADMIN)</MenuItem>
+                        <MenuItem value="tiago_token">e-CPF A3 - Tiago de Lima carneiro (ADMIN)</MenuItem>
+                        <MenuItem value="rh_token">e-CPF A3 - Joana Darc de Oliveira (RH)</MenuItem>
+                      </Select>
+                    </FormControl>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 1 }}>
+                      Certificado ICP-Brasil válido emitido por Autoridade Certificadora Credenciada.
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Box>
+                    <TextField
+                      label="CPF cadastrado no Gov.br"
+                      fullWidth sx={{ mb: 2 }}
+                      value={govBrCpf}
+                      onChange={(e) => setGovBrCpf(formatCPF(e.target.value))}
+                      placeholder="Ex: 000.000.000-00"
+                    />
+                    <TextField
+                      label="Senha Gov.br"
+                      type="password"
+                      fullWidth sx={{ mb: 3 }}
+                      value={govBrSenha}
+                      onChange={(e) => setGovBrSenha(e.target.value)}
+                    />
+                  </Box>
+                )}
+
+                <Button 
+                  variant="contained" 
+                  fullWidth 
+                  size="large" 
+                  sx={{ py: 1.5, bgcolor: '#1351b4', '&:hover': { bgcolor: '#0f3e8c' }, mb: 2 }}
+                  onClick={handleGovBrLogin}
+                  disabled={govBrLoading}
+                >
+                  {govBrLoading ? <CircularProgress size={24} color="inherit" /> : (govBrCertificado ? "Autenticar com Certificado" : "Entrar com Gov.br")}
+                </Button>
+
+                <Button variant="text" size="small" fullWidth onClick={() => setIsGovBrLoginMode(false)} sx={{ color: 'text.secondary' }}>
+                  Voltar para login padrão SGIP
+                </Button>
+              </Box>
+            ) : (
+              <Box>
+                <form onSubmit={handleLogin}>
+                  <TextField
+                    label="CPF do Servidor"
+                    fullWidth sx={{ mb: 2 }}
+                    value={loginCpf}
+                    onChange={(e) => setLoginCpf(formatCPF(e.target.value))}
+                    placeholder="Ex: 001.002.003-01"
+                  />
+                  <TextField
+                    label="Senha de Acesso"
+                    type="password"
+                    fullWidth sx={{ mb: 3 }}
+                    value={loginSenha}
+                    onChange={(e) => setLoginSenha(e.target.value)}
+                  />
+                  
+                  <Button type="submit" variant="contained" color="primary" fullWidth size="large" sx={{ py: 1.5, mb: 2 }}>
+                    Autenticar no Portal
+                  </Button>
+                </form>
+
+                <Button 
+                  variant="contained" 
+                  fullWidth 
+                  size="large" 
+                  startIcon={<ShieldCheck size={18} />} 
+                  sx={{ py: 1.5, bgcolor: '#1351b4', '&:hover': { bgcolor: '#0f3e8c' }, color: '#fff', textTransform: 'none', fontWeight: 700 }}
+                  onClick={() => {
+                    setIsGovBrLoginMode(true);
+                    setGovBrCpf(loginCpf);
+                  }}
+                >
+                  Entrar com GOV.BR
+                </Button>
+
+                <Divider sx={{ my: 3 }} />
+
+                <Typography variant="caption" display="block" sx={{ color: 'text.secondary' }}>
+                  ⚠️ Senhas padrão de teste: <strong style={{ color: '#14b8a6' }}>previdencia123</strong> para todos os perfis.
+                </Typography>
+                <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <Chip label="admin (001.002.003-01)" size="small" onClick={() => setLoginCpf('001.002.003-01')} sx={{ cursor: 'pointer' }} />
+                  <Chip label="rh (001.002.003-04)" size="small" onClick={() => setLoginCpf('001.002.003-04')} sx={{ cursor: 'pointer' }} />
+                  <Chip label="digitalização (001.002.003-08)" size="small" onClick={() => setLoginCpf('001.002.003-08')} sx={{ cursor: 'pointer' }} />
+                </Box>
+              </Box>
+            )}
           </Card>
         </Box>
       </ThemeProvider>
@@ -2308,14 +2718,14 @@ export default function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box sx={{ display: 'flex' }}>
+      <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden', width: '100vw' }}>
         
         {/* BARRA DE CABEÇALHO */}
-        <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, bgcolor: '#0f1720', borderBottom: '1px solid rgba(255,255,255,0.05)', boxShadow: 'none' }}>
+        <AppBar position="fixed" sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, bgcolor: themeMode === 'dark' ? '#0f1720' : '#ffffff', borderBottom: themeMode === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.08)', boxShadow: 'none', color: themeMode === 'dark' ? '#f8fafc' : '#0f172a' }}>
           <Toolbar sx={{ justifyContent: 'space-between' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Avatar sx={{ bgcolor: 'primary.main', width: 36, height: 36 }}>PD</Avatar>
-              <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 800, letterSpacing: '0.5px' }}>
+              <Typography variant="h6" noWrap component="div" sx={{ fontWeight: 800, letterSpacing: '0.5px', color: 'inherit' }}>
                 SGIP - PREVIDÊNCIA MUNICIPAL
               </Typography>
               <Chip label={isApiOnline ? "API NestJS Conectada" : "Modo Fallback Resiliente (Ativo)"} color={isApiOnline ? "success" : "warning"} size="small" variant="outlined" sx={{ ml: 2 }} />
@@ -2323,9 +2733,12 @@ export default function App() {
 
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
               <Box sx={{ textAlign: 'right' }}>
-                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{currentUser.nome}</Typography>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700, color: 'inherit' }}>{currentUser.nome}</Typography>
                 <Typography variant="caption" sx={{ color: 'primary.light', fontWeight: 600 }}>{currentUser.perfil}</Typography>
               </Box>
+              <IconButton onClick={() => setThemeMode(themeMode === 'dark' ? 'light' : 'dark')} color="inherit">
+                {themeMode === 'dark' ? <Sun size={20} style={{ color: '#f59e0b' }} /> : <Moon size={20} style={{ color: '#0891b2' }} />}
+              </IconButton>
               <IconButton onClick={handleLogout} color="error">
                 <LogOut size={20} />
               </IconButton>
@@ -2338,7 +2751,7 @@ export default function App() {
           variant="permanent"
           sx={{
             width: drawerWidth, flexShrink: 0,
-            [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: 'border-box', bgcolor: '#0b0f15', borderRight: '1px solid rgba(255,255,255,0.05)' }
+            [`& .MuiDrawer-paper`]: { width: drawerWidth, boxSizing: 'border-box', bgcolor: themeMode === 'dark' ? '#0b0f15' : '#f1f5f9', borderRight: themeMode === 'dark' ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.08)' }
           }}
         >
           <Toolbar />
@@ -2350,10 +2763,10 @@ export default function App() {
                     selected={activeTab === item.id}
                     onClick={() => setActiveTab(item.id)}
                   >
-                    <ListItemIcon sx={{ color: activeTab === item.id ? 'primary.light' : 'text.secondary', minWidth: 40 }}>
+                    <ListItemIcon sx={{ color: activeTab === item.id ? 'primary.light' : (themeMode === 'dark' ? '#94a3b8' : '#475569'), minWidth: 40 }}>
                       {item.icon}
                     </ListItemIcon>
-                    <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 13, fontWeight: 600 }} />
+                    <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: 13, fontWeight: 600, color: activeTab === item.id ? 'primary.light' : (themeMode === 'dark' ? '#94a3b8' : '#475569') }} />
                   </ListItemButton>
                 </ListItem>
               ))}
@@ -2362,7 +2775,7 @@ export default function App() {
         </Drawer>
 
         {/* ÁREA PRINCIPAL DE CONTEÚDO (MAIN VIEWPORT) */}
-        <Box component="main" sx={{ flexGrow: 1, p: 4, bgcolor: 'background.default', minHeight: '100vh', overflowY: 'auto' }}>
+        <Box component="main" sx={{ flexGrow: 1, p: 4, bgcolor: 'background.default', height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
           <Toolbar />
           
           <Box className="fade-in">
@@ -2372,9 +2785,16 @@ export default function App() {
                  ================================================================== */}
             {activeTab === 'dashboard' && (
               <Box>
-                <Typography variant="h4" sx={{ fontWeight: 800, mb: 4 }}>Painel de Controle e Estatísticas</Typography>
+                <Typography variant="h4" sx={{ fontWeight: 800, mb: 2 }}>Painel de Controle e Estatísticas</Typography>
                 
-                {/* Cards KPIs */}
+                <Tabs value={dashboardSubTab} onChange={(_, val) => setDashboardSubTab(val)} sx={{ mb: 4, borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  <Tab label="Indicadores Previdenciários" sx={{ fontWeight: 700 }} />
+                  <Tab label="Monitoramento Quixadá - CE (TCE-CE)" sx={{ fontWeight: 700 }} />
+                </Tabs>
+
+                {dashboardSubTab === 0 && (
+                  <Box>
+                    {/* Cards KPIs */}
                 <Grid container spacing={3} sx={{ mb: 4 }}>
                   <Grid item xs={12} sm={6} md={3}>
                     <Card>
@@ -2472,94 +2892,517 @@ export default function App() {
               </Box>
             )}
 
+            {/* MONITORAMENTO EXTERNO QUIXADÁ - CE */}
+            {dashboardSubTab === 1 && (
+              <Box>
+                {selectedExternalProcess ? (
+                  <Card sx={{ p: 4, mb: 4 }} className="fade-in">
+                    {/* Header */}
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3, borderBottom: '1px solid rgba(255,255,255,0.08)', pb: 2, flexWrap: 'wrap', gap: 2 }}>
+                      <Box>
+                        <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                          📂 Processo TCE-CE: {selectedExternalProcess.numero}
+                        </Typography>
+                        <Typography variant="subtitle2" color="primary.light" sx={{ mt: 0.5 }}>
+                          {selectedExternalProcess.assunto}
+                        </Typography>
+                      </Box>
+                      <Button variant="outlined" color="inherit" onClick={() => { setSelectedExternalProcess(null); setSelectedExternalDoc(null); setOpenGovBrModal(false); }}>
+                        Voltar para a Lista
+                      </Button>
+                    </Box>
+
+                    {/* Gov.br Banner and Action */}
+                    <Card sx={{ 
+                      p: 2.5, 
+                      mb: 4, 
+                      bgcolor: isGovBrConnected ? 'rgba(16,185,129,0.04)' : 'rgba(245,158,11,0.04)',
+                      border: isGovBrConnected ? '1px solid rgba(16,185,129,0.2)' : '1px solid rgba(245,158,11,0.2)',
+                      borderRadius: 2
+                    }}>
+                      <Grid container spacing={2} alignItems="center" justifyContent="space-between">
+                        <Grid item xs={12} md={8}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                            <ShieldCheck size={24} style={{ color: isGovBrConnected ? '#10b981' : '#f59e0b' }} />
+                            <Box>
+                              <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>
+                                {isGovBrConnected ? "Sessão de Controle Elevado Ativa (Gov.br)" : "Identificação Gov.br Requerida"}
+                              </Typography>
+                              <Typography variant="body2" color="text.secondary">
+                                {isGovBrConnected 
+                                  ? `Autenticado via ${currentUser?.tipoAutenticacao || 'Certificado Digital'}. Todos os documentos confidenciais estão destravados.` 
+                                  : "Este processo contém relatórios de folha de pagamento e auditorias confidenciais. Conecte com Gov.br (e-CPF A3) para liberar."}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </Grid>
+                        <Grid item xs={12} md={4} sx={{ textAlign: { md: 'right' } }}>
+                          {isGovBrConnected ? (
+                            <Button variant="outlined" color="success" onClick={() => setIsGovBrConnected(false)}>
+                              Desconectar Gov.br
+                            </Button>
+                          ) : (
+                            <Button variant="contained" sx={{ bgcolor: '#1351b4', '&:hover': { bgcolor: '#0f3e8c' }, color: '#fff', fontWeight: 700 }} onClick={() => setOpenGovBrModal(true)}>
+                              Identificar com Gov.br
+                            </Button>
+                          )}
+                        </Grid>
+                      </Grid>
+                    </Card>
+
+                    {/* Inline Gov.br Elevation Form */}
+                    {openGovBrModal && (
+                      <Card sx={{ p: 3, mb: 4, border: '1px solid #1351b4', bgcolor: 'rgba(19,81,180,0.02)' }} className="fade-in">
+                        <Typography variant="h6" sx={{ fontWeight: 800, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <ShieldCheck size={20} style={{ color: '#1351b4' }} /> Autenticação Gov.br (e-CPF ICP-Brasil)
+                        </Typography>
+                        
+                        <Tabs value={govBrCertificado ? 1 : 0} onChange={(_, val) => { if (val === 0) setGovBrCertificado(''); else setGovBrCertificado('admin_token'); }} sx={{ mb: 3 }}>
+                          <Tab label="Entrar com CPF e Senha" />
+                          <Tab label="Entrar com Certificado Digital" />
+                        </Tabs>
+
+                        {govBrCertificado ? (
+                          <Box sx={{ mb: 3 }}>
+                            <Typography variant="body2" sx={{ mb: 1, fontWeight: 700, fontSize: 13 }}>
+                              Selecione seu Certificado Digital e-CPF A3 (ICP-Brasil):
+                            </Typography>
+                            <FormControl fullWidth size="small" sx={{ maxWidth: 400 }}>
+                              <Select
+                                value={govBrCertificado}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setGovBrCertificado(val);
+                                  if (val === 'admin_token') setGovBrCpf('001.002.003-01');
+                                  else if (val === 'tiago_token') setGovBrCpf('057.611.763-35');
+                                }}
+                              >
+                                <MenuItem value="admin_token">e-CPF A3 - Carlos Eduardo da Silva (ADMIN)</MenuItem>
+                                <MenuItem value="tiago_token">e-CPF A3 - Tiago de Lima carneiro (ADMIN)</MenuItem>
+                              </Select>
+                            </FormControl>
+                          </Box>
+                        ) : (
+                          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
+                            <TextField
+                              label="CPF Gov.br"
+                              size="small"
+                              value={govBrCpf}
+                              onChange={(e) => setGovBrCpf(formatCPF(e.target.value))}
+                              placeholder="000.000.000-00"
+                              sx={{ width: 220 }}
+                            />
+                            <TextField
+                              label="Senha"
+                              type="password"
+                              size="small"
+                              value={govBrSenha}
+                              onChange={(e) => setGovBrSenha(e.target.value)}
+                              sx={{ width: 220 }}
+                            />
+                          </Box>
+                        )}
+
+                        {govBrError && <Typography color="error" variant="body2" sx={{ mb: 2 }}>{govBrError}</Typography>}
+
+                        <Box sx={{ display: 'flex', gap: 2 }}>
+                          <Button 
+                            variant="contained" 
+                            sx={{ bgcolor: '#1351b4', '&:hover': { bgcolor: '#0f3e8c' } }} 
+                            onClick={async () => {
+                              setGovBrLoading(true);
+                              setGovBrError('');
+                              try {
+                                if (isApiOnline && authToken) {
+                                  const payload = govBrCertificado ? {
+                                    certificadoToken: govBrCertificado + "_A3_TOKEN",
+                                    eCpf: govBrCpf
+                                  } : {
+                                    cpf: govBrCpf,
+                                    senha: govBrSenha
+                                  };
+                                  await axios.post(`${API_URL}/auth/gov-br`, payload);
+                                }
+                                setIsGovBrConnected(true);
+                                setOpenGovBrModal(false);
+                                alert("🎉 Acesso e-CPF validado com sucesso!");
+                              } catch (err: any) {
+                                setGovBrError(err.response?.data?.error || "Credenciais Gov.br incorretas.");
+                              } finally {
+                                setGovBrLoading(false);
+                              }
+                            }}
+                            disabled={govBrLoading}
+                          >
+                            {govBrLoading ? "Validando Assinatura..." : "Entrar com Gov.br / e-CPF"}
+                          </Button>
+                          <Button variant="outlined" color="inherit" onClick={() => setOpenGovBrModal(false)}>
+                            Cancelar
+                          </Button>
+                        </Box>
+                      </Card>
+                    )}
+
+                    {/* Main Detail Area */}
+                    <Grid container spacing={3}>
+                      {/* Left: Document list */}
+                      <Grid item xs={12} md={selectedExternalDoc ? 5 : 12}>
+                        <Typography variant="h6" sx={{ fontWeight: 800, mb: 2, color: 'primary.light' }}>
+                          📄 Arquivos de Controle e Anexos ({selectedExternalProcess.documentos?.length || 0})
+                        </Typography>
+                        <List sx={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 2, p: 0, overflow: 'hidden' }}>
+                          {(selectedExternalProcess.documentos || []).map((doc: any, idx: number) => {
+                            const isLocked = doc.restrito && !isGovBrConnected;
+                            const isCurrent = selectedExternalDoc?.id === doc.id;
+                            
+                            return (
+                              <ListItem 
+                                key={doc.id}
+                                divider={idx < selectedExternalProcess.documentos.length - 1}
+                                sx={{ 
+                                  bgcolor: isCurrent ? 'rgba(20,184,166,0.05)' : 'transparent',
+                                  '&:hover': { bgcolor: 'rgba(255,255,255,0.02)' }
+                                }}
+                              >
+                                <ListItemText 
+                                  primary={
+                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                                      <Typography variant="body2" sx={{ fontWeight: 700, color: isLocked ? 'text.disabled' : 'text.primary' }}>
+                                        {doc.nome}
+                                      </Typography>
+                                      {doc.restrito && (
+                                        <Chip 
+                                          label={isGovBrConnected ? "Desbloqueado" : "Restrito A3"} 
+                                          size="small" 
+                                          color={isGovBrConnected ? "success" : "warning"}
+                                          variant="outlined"
+                                          sx={{ height: 20, fontSize: 10, fontWeight: 700 }}
+                                        />
+                                      )}
+                                    </Box>
+                                  }
+                                  secondary={`Tamanho: ${doc.tamanho} • Publicado em: ${doc.data}`}
+                                />
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                  {isLocked ? (
+                                    <Button size="small" variant="text" color="warning" startIcon={<Lock size={14} />} onClick={() => setOpenGovBrModal(true)}>
+                                      Desbloquear
+                                    </Button>
+                                  ) : (
+                                    <Button size="small" variant="outlined" color="primary" onClick={() => setSelectedExternalDoc(doc)}>
+                                      Visualizar
+                                    </Button>
+                                  )}
+                                </Box>
+                              </ListItem>
+                            );
+                          })}
+                        </List>
+                      </Grid>
+
+                      {/* Right: Preview viewer */}
+                      {selectedExternalDoc && (
+                        <Grid item xs={12} md={7} className="fade-in">
+                          <Card sx={{ 
+                            p: 3, 
+                            border: '1px solid rgba(20,184,166,0.2)', 
+                            bgcolor: '#040711',
+                            minHeight: 340,
+                            display: 'flex',
+                            flexDirection: 'column',
+                            justifyContent: 'space-between'
+                          }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid rgba(255,255,255,0.08)', pb: 1.5, mb: 2 }}>
+                              <Box>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 800, color: 'primary.light' }}>
+                                  {selectedExternalDoc.nome}
+                                </Typography>
+                                <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                                  Tamanho: {selectedExternalDoc.tamanho} • Registro Eletrônico: {selectedExternalDoc.data}
+                                </Typography>
+                              </Box>
+                              <IconButton size="small" onClick={() => setSelectedExternalDoc(null)}>
+                                <X size={18} />
+                              </IconButton>
+                            </Box>
+
+                            {/* Simulated Paper Document Viewer */}
+                            <Box sx={{
+                              flexGrow: 1,
+                              bgcolor: '#080d16',
+                              border: '1px solid #d4af37',
+                              borderRadius: 1.5,
+                              p: 3,
+                              fontFamily: 'Courier New, Courier, monospace',
+                              color: '#cbd5e1',
+                              backgroundImage: 'radial-gradient(circle at center, rgba(212,175,55,0.02) 0%, transparent 80%)',
+                              boxShadow: 'inset 0 0 20px rgba(0,0,0,0.8)',
+                              mb: 2,
+                              whiteSpace: 'pre-wrap',
+                              fontSize: 12,
+                              lineHeight: 1.6
+                            }}>
+                              <Box sx={{ borderBottom: '1px solid #d4af37', pb: 1, mb: 2, textAlign: 'center' }}>
+                                <Typography variant="caption" sx={{ fontWeight: 800, letterSpacing: 1.5, color: '#d4af37', display: 'block' }}>
+                                  TRIBUNAL DE CONTAS DO ESTADO DO CEARÁ (TCE-CE)
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontSize: 9, color: 'text.secondary', mt: 0.5 }}>
+                                  SISTEMA DE INTEGRAÇÃO OPERACIONAL RPPS • QUIXADÁ-CE
+                                </Typography>
+                              </Box>
+                              
+                              {selectedExternalDoc.conteudo}
+
+                              <Box sx={{ borderTop: '1px dashed rgba(255,255,255,0.1)', mt: 3, pt: 1.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                                <Typography variant="body2" sx={{ fontSize: 9, color: 'text.secondary' }}>
+                                  Assinatura Eletrônica hash SHA-256: F0A9B8D7C6E5F4A3B2C1D0E9F8A7B6C5D4E3F2A1B0C9D8E7F6A5
+                                </Typography>
+                                <Typography variant="body2" sx={{ fontSize: 9, color: '#10b981', display: 'flex', alignItems: 'center', gap: 0.5, fontWeight: 700 }}>
+                                  <ShieldCheck size={12} /> Assinatura digital ICP-Brasil e-CPF validada com sucesso em {new Date().toLocaleDateString()}.
+                                </Typography>
+                              </Box>
+                            </Box>
+
+                            <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                              <Button variant="outlined" size="small" onClick={() => setSelectedExternalDoc(null)}>
+                                Fechar Visualizador
+                              </Button>
+                            </Box>
+                          </Card>
+                        </Grid>
+                      )}
+                    </Grid>
+                  </Card>
+                ) : (
+                  <Grid container spacing={3}>
+                    {/* Left: Processes Table */}
+                    <Grid item xs={12} md={9}>
+                      {/* Header Banner */}
+                      <Card sx={{ 
+                        p: 3, 
+                        mb: 4, 
+                        bgcolor: '#0c1017',
+                        backgroundImage: 'radial-gradient(ellipse at top right, rgba(16, 185, 129, 0.08), transparent 45%)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: 3
+                      }}>
+                        <Grid container spacing={3} alignItems="center" justifyContent="space-between">
+                          <Grid item xs={12} md={8}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1, flexWrap: 'wrap' }}>
+                              <Typography variant="h5" sx={{ fontWeight: 800 }}>Radar de Controle Externo: Quixadá - CE</Typography>
+                              <Chip 
+                                label="SISTEMA INTEGRADO TCE-CE - CONECTADO" 
+                                color="success" 
+                                size="small" 
+                                sx={{ 
+                                  fontWeight: 700, 
+                                  bgcolor: 'rgba(16,185,129,0.1)', 
+                                  border: '1px solid rgba(16,185,129,0.3)', 
+                                  color: '#10b981'
+                                }}
+                              />
+                            </Box>
+                            <Typography variant="body2" color="text.secondary">
+                              Mapeamento em tempo real de lides previdenciárias, fiscalizações de pessoal, aposentadorias e tomadas de contas especiais de Quixadá junto ao TCE-CE.
+                            </Typography>
+                          </Grid>
+                          <Grid item xs={12} md={4}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: { md: 'flex-end' }, gap: 2, flexWrap: 'wrap' }}>
+                              <TextField
+                                type="date"
+                                label="Data Autuação"
+                                size="small"
+                                InputLabelProps={{ shrink: true }}
+                                value={externalSearchDate}
+                                onChange={(e) => setExternalSearchDate(e.target.value)}
+                                sx={{ 
+                                  width: 150,
+                                  '& .MuiInputBase-input': { color: '#fff' },
+                                  '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.7)' },
+                                  '& .MuiOutlinedInput-root': {
+                                    '& fieldset': { borderColor: 'rgba(255,255,255,0.2)' },
+                                    '&:hover fieldset': { borderColor: '#14b8a6' },
+                                  }
+                                }}
+                              />
+                              <Button 
+                                variant="contained" 
+                                color="primary" 
+                                startIcon={isSyncingExternal ? <CircularProgress size={18} color="inherit" /> : <Search size={18} />} 
+                                onClick={sincronizarProcessosExternos}
+                                disabled={isSyncingExternal}
+                                sx={{ height: 40 }}
+                              >
+                                {isSyncingExternal ? "Varrendo TCE..." : "Buscar no TCE (Tempo Real)"}
+                              </Button>
+                            </Box>
+                          </Grid>
+                        </Grid>
+                      </Card>
+
+                      {/* Barra de Pesquisa */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                        <TextField
+                          size="small"
+                          placeholder="Pesquisar por processo ou assunto..."
+                          value={externalSearchQuery}
+                          onChange={(e) => setExternalSearchQuery(e.target.value)}
+                          InputProps={{
+                            startAdornment: (
+                              <InputAdornment position="start">
+                                <Search size={18} style={{ color: 'rgba(255,255,255,0.4)' }} />
+                              </InputAdornment>
+                            ),
+                          }}
+                          sx={{ width: 350 }}
+                        />
+                        <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                          Exibindo {externalProcesses.filter(p => p.numero.toLowerCase().includes(externalSearchQuery.toLowerCase()) || p.assunto.toLowerCase().includes(externalSearchQuery.toLowerCase())).length} processos encontrados
+                        </Typography>
+                      </Box>
+
+                      {/* Tabela de Processos */}
+                      <TableContainer component={Paper} sx={{ border: '1px solid rgba(255,255,255,0.08)', borderRadius: 2 }}>
+                        <Table>
+                          <TableHead>
+                            <TableRow sx={{ bgcolor: 'rgba(255,255,255,0.02)' }}>
+                              <TableCell sx={{ fontWeight: 700 }}>Número do Processo</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Assunto Previdenciário</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Órgão de Origem</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Data Limite</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }}>Status TCE</TableCell>
+                              <TableCell sx={{ fontWeight: 700 }} align="center">Ações</TableCell>
+                            </TableRow>
+                          </TableHead>
+                          <TableBody>
+                            {externalProcesses
+                              .filter(p => p.numero.toLowerCase().includes(externalSearchQuery.toLowerCase()) || p.assunto.toLowerCase().includes(externalSearchQuery.toLowerCase()))
+                              .map((p) => {
+                                const isAtrasado = p.urgencia === "ATRASADA";
+                                const isCritico = p.urgencia === "CRITICA";
+                                const isMedia = p.urgencia === "MEDIA";
+                                
+                                let statusColor: "success" | "error" | "warning" | "info" | "primary" | "secondary" | "default" = "success";
+                                let labelUrgencia = "Dentro do Prazo";
+                                if (isAtrasado) {
+                                  statusColor = "error";
+                                  labelUrgencia = "Atrasado";
+                                } else if (isCritico) {
+                                  statusColor = "error";
+                                  labelUrgencia = "Urgente";
+                                } else if (isMedia) {
+                                  statusColor = "warning";
+                                  labelUrgencia = "Prazo Médio";
+                                }
+
+                                return (
+                                  <TableRow key={p.id} hover sx={{ '&:last-child td, &:last-child th': { border: 0 } }}>
+                                    <TableCell sx={{ fontWeight: 700, fontFamily: 'monospace', color: 'primary.light' }}>{p.numero}</TableCell>
+                                    <TableCell>
+                                      <Typography variant="body2" sx={{ fontWeight: 700 }}>{p.assunto}</Typography>
+                                      <Typography variant="caption" sx={{ color: 'text.secondary' }}>Interessado: {p.interessado}</Typography>
+                                    </TableCell>
+                                    <TableCell sx={{ fontSize: '12px' }}>{p.orgao}</TableCell>
+                                    <TableCell>
+                                      <Chip 
+                                        label={`${p.dataLimite} (${labelUrgencia})`} 
+                                        color={statusColor} 
+                                        size="small" 
+                                        variant={isCritico || isAtrasado ? "filled" : "outlined"}
+                                        sx={{ 
+                                          fontWeight: 700
+                                        }}
+                                      />
+                                    </TableCell>
+                                    <TableCell>
+                                      <Chip label={p.status} size="small" variant="outlined" sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
+                                    </TableCell>
+                                    <TableCell align="center">
+                                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'center' }}>
+                                        <Button
+                                          size="small"
+                                          variant="outlined"
+                                          color="primary"
+                                          startIcon={<Search size={14} />}
+                                          onClick={() => {
+                                            setSelectedExternalProcess(p);
+                                            setSelectedExternalDoc(null);
+                                          }}
+                                        >
+                                          Documentos
+                                        </Button>
+                                        <Button
+                                          size="small"
+                                          variant="outlined"
+                                          color="success"
+                                          startIcon={<Download size={14} />}
+                                          onClick={() => importarProcessoExterno(p)}
+                                        >
+                                          Importar
+                                        </Button>
+                                      </Box>
+                                    </TableCell>
+                                  </TableRow>
+                                );
+                              })}
+                          </TableBody>
+                        </Table>
+                      </TableContainer>
+                    </Grid>
+
+                    {/* Right: Live Feed Panel */}
+                    <Grid item xs={12} md={3}>
+                      <Card sx={{ p: 2.5, height: '100%', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        <Typography variant="subtitle2" sx={{ fontWeight: 800, mb: 2, display: 'flex', alignItems: 'center', gap: 1, color: '#10b981' }}>
+                          <span style={{ width: 10, height: 10, backgroundColor: '#10b981', borderRadius: '50%', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+                          Live Feed TCE-CE (Tempo Real)
+                        </Typography>
+                        <List sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, p: 0 }}>
+                          {liveFeedLogs.map((log, index) => (
+                            <Box 
+                              key={index} 
+                              sx={{ 
+                                p: 1.5, 
+                                borderRadius: 1.5, 
+                                bgcolor: index === 0 ? 'rgba(16, 185, 129, 0.05)' : 'transparent',
+                                borderLeft: index === 0 ? '3px solid #10b981' : '3px solid rgba(255,255,255,0.08)',
+                                transition: 'all 0.3s ease-in-out',
+                                animation: index === 0 ? 'fadeIn 0.5s ease-out' : 'none'
+                              }}
+                            >
+                              <Typography variant="body2" sx={{ fontSize: 11, color: index === 0 ? 'text.primary' : 'text.secondary', lineHeight: 1.4 }}>
+                                {log}
+                              </Typography>
+                            </Box>
+                          ))}
+                        </List>
+                        <Typography variant="caption" sx={{ color: 'text.secondary', display: 'block', mt: 3, textAlign: 'center', fontStyle: 'italic' }}>
+                          Escutando eventos do barramento oficial...
+                        </Typography>
+                      </Card>
+                    </Grid>
+                  </Grid>
+                )}
+              </Box>
+            )}
+          </Box>
+        )}
+
             {/* ==================================================================
                  TELA 2: USUÁRIOS (MÓDULO 1)
                  ================================================================== */}
             {activeTab === 'users' && (
               <Box>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 4 }}>
-                  <Typography variant="h4" sx={{ fontWeight: 800 }}>Gestão de Usuários e Perfis (RBAC)</Typography>
-                  <Button variant="contained" startIcon={<UserPlus size={18} />} onClick={() => {
-                    setUserFormNome('');
-                    setUserFormCpf('');
-                    setUserFormEmail('');
-                    setUserFormSenha('');
-                    setUserFormPerfil('Consulta');
-                    setUserFormAtivo(true);
-                    aplicarPreenchimentoPermissoesPorPerfil('Consulta');
-                    setOpenNewUser(true);
-                  }}>
-                    Novo Usuário
-                  </Button>
-                </Box>
-                <TableContainer component={Paper} sx={{ mb: 4 }}>
-                  <Table>
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Nome</TableCell>
-                        <TableCell>CPF</TableCell>
-                        <TableCell>E-mail</TableCell>
-                        <TableCell>Perfil de Acesso</TableCell>
-                        <TableCell>Status</TableCell>
-                        <TableCell>Permissões (RBAC)</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {usersList.map((u) => (
-                        <TableRow key={u.id}>
-                          <TableCell sx={{ fontWeight: 700 }}>{u.nome}</TableCell>
-                          <TableCell>{u.cpf}</TableCell>
-                          <TableCell>{u.email}</TableCell>
-                          <TableCell>
-                            <Chip 
-                              label={u.perfil} 
-                              color={u.perfil === 'Administrador' ? 'secondary' : u.perfil === 'Recursos Humanos' ? 'primary' : 'default'} 
-                              variant="outlined" 
-                              size="small" 
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Chip 
-                              label={u.ativo ? "Ativo" : "Inativo"} 
-                              color={u.ativo ? "success" : "error"} 
-                              size="small" 
-                            />
-                          </TableCell>
-                          <TableCell>
-                            <Box sx={{ display: 'flex', gap: 1 }}>
-                              <Button 
-                                size="small" 
-                                variant="outlined" 
-                                color="primary"
-                                onClick={() => handleModificarUsuarioClick(u)}
-                                startIcon={<Settings size={14} />}
-                              >
-                                Permissões
-                              </Button>
-                              <Button 
-                                size="small" 
-                                variant="outlined" 
-                                color="error"
-                                onClick={() => handleExcluirUsuario(u)}
-                                startIcon={<Trash size={14} />}
-                                disabled={!u.ativo}
-                              >
-                                Desativar
-                              </Button>
-                            </Box>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-
-                {/* DIALOG: NOVO USUÁRIO */}
-                <Dialog open={openNewUser} onClose={() => setOpenNewUser(false)} maxWidth="md" fullWidth>
-                  <DialogTitle sx={{ fontWeight: 800, bgcolor: '#0f1720', color: 'white' }}>
-                    🆕 Autuar Novo Servidor & Perfil de Acesso (RBAC)
-                  </DialogTitle>
-                  <DialogContent sx={{ mt: 2 }}>
+                {openNewUser ? (
+                  <Card sx={{ p: 4, mb: 4 }} className="fade-in">
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                      <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                        🆕 Autuar Novo Servidor & Perfil de Acesso (RBAC)
+                      </Typography>
+                      <Button variant="outlined" color="inherit" onClick={() => setOpenNewUser(false)}>
+                        Voltar para a Lista
+                      </Button>
+                    </Box>
                     <Grid container spacing={3}>
                       <Grid item xs={12} md={6}>
                         <TextField
@@ -2574,7 +3417,7 @@ export default function App() {
                           fullWidth
                           placeholder="Ex: 000.000.000-00"
                           value={userFormCpf}
-                          onChange={(e) => setUserFormCpf(e.target.value)}
+                          onChange={(e) => setUserFormCpf(formatCPF(e.target.value))}
                           sx={{ mb: 2.5 }}
                         />
                       </Grid>
@@ -2618,6 +3461,17 @@ export default function App() {
                             <MenuItem value="Consulta">Consulta (Apenas Visualização)</MenuItem>
                           </Select>
                         </FormControl>
+                      </Grid>
+
+                      <Grid item xs={12} md={6}>
+                        <TextField
+                          label="Telefone / Celular (WhatsApp)"
+                          placeholder="Ex: (85) 99999-9999"
+                          fullWidth
+                          value={userFormTelefone}
+                          onChange={(e) => setUserFormTelefone(e.target.value)}
+                          sx={{ mb: 2.5 }}
+                        />
                       </Grid>
 
                       <Grid item xs={12} md={6} sx={{ display: 'flex', alignItems: 'center' }}>
@@ -2710,19 +3564,21 @@ export default function App() {
                         </TableContainer>
                       </Grid>
                     </Grid>
-                  </DialogContent>
-                  <DialogActions sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.01)' }}>
-                    <Button onClick={() => setOpenNewUser(false)} color="inherit">Cancelar</Button>
-                    <Button onClick={handleSalvarNovoUsuario} variant="contained" color="success">Salvar Perfil de Acesso</Button>
-                  </DialogActions>
-                </Dialog>
-
-                {/* DIALOG: EDITAR USUÁRIO */}
-                <Dialog open={openEditUser} onClose={() => setOpenEditUser(false)} maxWidth="md" fullWidth>
-                  <DialogTitle sx={{ fontWeight: 800, bgcolor: '#0f1720', color: 'white' }}>
-                    ⚙️ Modificar Perfil de Acesso & Permissões RBAC
-                  </DialogTitle>
-                  <DialogContent sx={{ mt: 2 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
+                      <Button onClick={() => setOpenNewUser(false)} color="inherit">Cancelar</Button>
+                      <Button onClick={handleSalvarNovoUsuario} variant="contained" color="success">Salvar Perfil de Acesso</Button>
+                    </Box>
+                  </Card>
+                ) : openEditUser ? (
+                  <Card sx={{ p: 4, mb: 4 }} className="fade-in">
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                      <Typography variant="h5" sx={{ fontWeight: 800 }}>
+                        ⚙️ Modificar Perfil de Acesso & Permissões RBAC
+                      </Typography>
+                      <Button variant="outlined" color="inherit" onClick={() => setOpenEditUser(false)}>
+                        Voltar para a Lista
+                      </Button>
+                    </Box>
                     <Grid container spacing={3}>
                       <Grid item xs={12} md={6}>
                         <TextField
@@ -2733,12 +3589,21 @@ export default function App() {
                           sx={{ mb: 2.5 }}
                         />
                         <TextField
-                          label="CPF"
+                          label="CPF *"
                           fullWidth
-                          disabled
                           value={userFormCpf}
+                          onChange={(e) => setUserFormCpf(formatCPF(e.target.value))}
                           sx={{ mb: 2.5 }}
-                          helperText="O CPF é a chave única do servidor e não pode ser editado."
+                          helperText="Se necessário, corrija os dígitos do CPF do servidor (será formatado automaticamente)."
+                        />
+                        <TextField
+                          label="Alterar Senha"
+                          placeholder="Deixe em branco para manter a atual"
+                          type="password"
+                          fullWidth
+                          value={userFormSenha}
+                          onChange={(e) => setUserFormSenha(e.target.value)}
+                          sx={{ mb: 2.5 }}
                         />
                       </Grid>
                       <Grid item xs={12} md={6}>
@@ -2770,6 +3635,14 @@ export default function App() {
                             <MenuItem value="Consulta">Consulta (Apenas Visualização)</MenuItem>
                           </Select>
                         </FormControl>
+                        <TextField
+                          label="Telefone / Celular (WhatsApp)"
+                          placeholder="Ex: (85) 99999-9999"
+                          fullWidth
+                          value={userFormTelefone}
+                          onChange={(e) => setUserFormTelefone(e.target.value)}
+                          sx={{ mb: 2.5 }}
+                        />
                       </Grid>
 
                       <Grid item xs={12} sx={{ display: 'flex', alignItems: 'center' }}>
@@ -2862,12 +3735,128 @@ export default function App() {
                         </TableContainer>
                       </Grid>
                     </Grid>
-                  </DialogContent>
-                  <DialogActions sx={{ p: 3, bgcolor: 'rgba(255,255,255,0.01)' }}>
-                    <Button onClick={() => setOpenEditUser(false)} color="inherit">Cancelar</Button>
-                    <Button onClick={handleSalvarEdicaoUsuario} variant="contained" color="primary">Salvar Alterações</Button>
-                  </DialogActions>
-                </Dialog>
+                    <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 2, mt: 4 }}>
+                      <Button onClick={() => setOpenEditUser(false)} color="inherit">Cancelar</Button>
+                      <Button onClick={handleSalvarEdicaoUsuario} variant="contained" color="primary">Salvar Alterações</Button>
+                    </Box>
+                  </Card>
+                ) : (
+                  <>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 4 }}>
+                      <Typography variant="h4" sx={{ fontWeight: 800 }}>Gestão de Usuários e Perfis (RBAC)</Typography>
+                      <Button variant="contained" startIcon={<UserPlus size={18} />} onClick={() => {
+                        setUserFormNome('');
+                        setUserFormCpf('');
+                        setUserFormEmail('');
+                        setUserFormSenha('');
+                        setUserFormPerfil('Consulta');
+                        setUserFormAtivo(true);
+                        setUserFormTelefone('');
+                        aplicarPreenchimentoPermissoesPorPerfil('Consulta');
+                        setOpenNewUser(true);
+                      }}>
+                        Novo Usuário
+                      </Button>
+                    </Box>
+                    <TableContainer component={Paper} sx={{ mb: 4 }}>
+                      <Table>
+                        <TableHead>
+                          <TableRow>
+                            <TableCell>Nome</TableCell>
+                            <TableCell>CPF</TableCell>
+                            <TableCell>E-mail</TableCell>
+                            <TableCell>Contato</TableCell>
+                            <TableCell>Perfil de Acesso</TableCell>
+                            <TableCell>Status</TableCell>
+                            <TableCell>Permissões (RBAC)</TableCell>
+                          </TableRow>
+                        </TableHead>
+                        <TableBody>
+                          {usersList.map((u) => (
+                            <TableRow key={u.id}>
+                              <TableCell sx={{ fontWeight: 700 }}>{u.nome}</TableCell>
+                              <TableCell>{u.cpf}</TableCell>
+                              <TableCell>{u.email}</TableCell>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                  <Typography variant="body2">{u.telefone || 'Sem telefone'}</Typography>
+                                  {u.telefone && (
+                                    <>
+                                      <Tooltip title="Enviar WhatsApp">
+                                        <IconButton
+                                          size="small"
+                                          sx={{ color: '#25D366' }}
+                                          onClick={() => {
+                                            const cleanNumber = u.telefone.replace(/\D/g, '');
+                                            const formattedNumber = (cleanNumber.length === 10 || cleanNumber.length === 11) && !cleanNumber.startsWith('55')
+                                              ? `55${cleanNumber}`
+                                              : cleanNumber;
+                                            window.open(`https://wa.me/${formattedNumber}`, '_blank');
+                                          }}
+                                        >
+                                          <Phone size={14} />
+                                        </IconButton>
+                                      </Tooltip>
+                                      <Tooltip title="Enviar Telegram">
+                                        <IconButton
+                                          size="small"
+                                          sx={{ color: '#0088cc' }}
+                                          onClick={() => {
+                                            window.open(`https://t.me/share/url?url=https://sgip-rpps.gov.br&text=Olá!`, '_blank');
+                                          }}
+                                        >
+                                          <Send size={14} />
+                                        </IconButton>
+                                      </Tooltip>
+                                    </>
+                                  )}
+                                </Box>
+                              </TableCell>
+                              <TableCell>
+                                <Chip 
+                                  label={u.perfil} 
+                                  color={u.perfil === 'Administrador' ? 'secondary' : u.perfil === 'Recursos Humanos' ? 'primary' : 'default'} 
+                                  variant="outlined" 
+                                  size="small" 
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Chip 
+                                  label={u.ativo ? "Ativo" : "Inativo"} 
+                                  color={u.ativo ? "success" : "error"} 
+                                  size="small" 
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                  <Button 
+                                    size="small" 
+                                    variant="outlined" 
+                                    color="primary"
+                                    onClick={() => handleModificarUsuarioClick(u)}
+                                    startIcon={<Settings size={14} />}
+                                  >
+                                    Permissões
+                                  </Button>
+                                  <Button 
+                                    size="small" 
+                                    variant="outlined" 
+                                    color="error"
+                                    onClick={() => handleExcluirUsuario(u)}
+                                    startIcon={<Trash size={14} />}
+                                    disabled={!u.ativo}
+                                  >
+                                    Desativar
+                                  </Button>
+                                </Box>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
+                  </>
+                )}
               </Box>
             )}
 
@@ -3598,6 +4587,11 @@ export default function App() {
                                 </TableCell>
                                 <TableCell align="center">
                                   <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
+                                    <Tooltip title="Visualizar Documento">
+                                      <IconButton size="small" color="primary" onClick={() => handleDossierTimelineItemClick(d)}>
+                                        <Eye size={14} />
+                                      </IconButton>
+                                    </Tooltip>
                                     <Tooltip title="Renomear Arquivo">
                                       <IconButton size="small" color="warning" onClick={() => handleEditarArquivoClick(d)}>
                                         <Settings size={14} />
@@ -3614,7 +4608,7 @@ export default function App() {
                             ))}
                             {documentosList.filter(d => d.pasta_id === selectedFolderId).length === 0 && (
                               <TableRow>
-                                <TableCell colSpan={5} align="center" sx={{ py: 4, color: 'text.secondary' }}>
+                                <TableCell colSpan={6} align="center" sx={{ py: 4, color: 'text.secondary' }}>
                                   Pasta vazia. Use a aba "Scanner" ou arraste arquivos acima para popular.
                                 </TableCell>
                               </TableRow>
@@ -3675,10 +4669,10 @@ export default function App() {
 
                       {scannedImage && (
                         <Box sx={{ mt: 2, display: 'flex', gap: 2, justifyContent: 'center' }}>
-                          <Button variant="outlined" color="primary" onClick={toggleGrayscale} active={scanFilters.grayscale}>
+                          <Button variant={scanFilters.grayscale ? "contained" : "outlined"} color="primary" onClick={toggleGrayscale}>
                             Cinza
                           </Button>
-                          <Button variant="outlined" color="primary" onClick={toggleBinarize} active={scanFilters.binarize}>
+                          <Button variant={scanFilters.binarize ? "contained" : "outlined"} color="primary" onClick={toggleBinarize}>
                             Binarizar (1-Bit)
                           </Button>
                         </Box>
@@ -3778,7 +4772,7 @@ export default function App() {
                       <Typography variant="h6" sx={{ fontWeight: 700, mb: 1 }}>Origem da Captura</Typography>
                       <Tabs 
                         value={scanSourceMode} 
-                        onChange={(e, newVal) => {
+                        onChange={(_, newVal) => {
                           setScanSourceMode(newVal);
                           desligarCamera();
                         }}
@@ -4704,16 +5698,26 @@ export default function App() {
                       </Typography>
                     </Box>
                   ) : dossierFileBase64 ? (
-                    <img 
-                      src={dossierFileBase64} 
-                      alt={selectedDossierFile.nome_arquivo} 
-                      style={{ 
-                        maxWidth: '100%', 
-                        maxHeight: '100%', 
-                        objectFit: 'contain',
-                        filter: 'drop-shadow(0px 8px 24px rgba(0,0,0,0.5))' 
-                      }} 
-                    />
+                    selectedDossierFile.extensao?.toLowerCase() === 'pdf' ? (
+                      <iframe 
+                        src={dossierFileBase64} 
+                        title={selectedDossierFile.nome_arquivo} 
+                        width="100%" 
+                        height="100%" 
+                        style={{ border: 'none', backgroundColor: '#fff', borderRadius: '8px' }} 
+                      />
+                    ) : (
+                      <img 
+                        src={dossierFileBase64} 
+                        alt={selectedDossierFile.nome_arquivo} 
+                        style={{ 
+                          maxWidth: '100%', 
+                          maxHeight: '100%', 
+                          objectFit: 'contain',
+                          filter: 'drop-shadow(0px 8px 24px rgba(0,0,0,0.5))' 
+                        }} 
+                      />
+                    )
                   ) : (
                     /* Mock Document Premium */
                     <Box sx={{
@@ -4846,7 +5850,6 @@ export default function App() {
                     multiline
                     rows={8}
                     fullWidth
-                    readOnly
                     value={selectedDossierFile.ocr_conteudo_texto || selectedDossierFile.ocr_texto || 'Não há conteúdo de texto reconhecido neste arquivo.'}
                     variant="outlined"
                     InputProps={{

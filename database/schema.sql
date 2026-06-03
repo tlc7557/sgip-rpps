@@ -34,6 +34,7 @@ CREATE TABLE usuarios (
     senha VARCHAR(255) NOT NULL, -- Senha criptografada (bcrypt)
     perfil VARCHAR(50) NOT NULL, -- Administrador, Diretor, Procurador, Recursos Humanos, Jurídico, Financeiro, Protocolo, Digitalização, Consulta
     ativo BOOLEAN DEFAULT TRUE,
+    telefone VARCHAR(20) DEFAULT '',
     assinatura_eletronica_token VARCHAR(255), -- Token/Assinatura digitalizada
     ultimo_login TIMESTAMP,
     criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

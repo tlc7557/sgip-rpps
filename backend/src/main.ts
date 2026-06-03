@@ -76,6 +76,13 @@ function authenticateToken(req: AuthenticatedRequest, res: Response, next: NextF
 async function startServer() {
   const db = await getDatabase();
 
+  // Mapeamento de migração dinâmica: garantir coluna telefone
+  try {
+    await db.execute(`ALTER TABLE usuarios ADD COLUMN telefone VARCHAR(20) DEFAULT ''`);
+  } catch (e) {
+    // Ignorar se a coluna já existir
+  }
+
   // Endpoint público de Healthcheck para a SPA
   app.get('/api/ping', (req: Request, res: Response) => {
     res.json({ status: "online", time: new Date().toISOString() });
@@ -124,13 +131,92 @@ async function startServer() {
     }
   });
 
+  // Autenticação mockada com GOV.BR (Certificado Digital ou Usuário/Senha)
+  app.post('/api/auth/gov-br', async (req: Request, res: Response) => {
+    const { cpf, senha, certificadoToken, eCpf } = req.body;
+
+    try {
+      let targetCpf = cpf;
+
+      if (certificadoToken) {
+        if (certificadoToken.includes("A3_TOKEN") || certificadoToken.includes("CERT_A1")) {
+          targetCpf = eCpf || "001.002.003-01"; // CPF padrão se não enviado
+        } else {
+          return res.status(400).json({ error: "Certificado digital inválido ou não reconhecido pela ICP-Brasil." });
+        }
+      } else if (!cpf || !senha) {
+        return res.status(400).json({ error: "Informe as credenciais Gov.br (CPF e Senha) ou insira seu Certificado Digital." });
+      }
+
+      const cleanCpf = targetCpf.replace(/\D/g, '').trim(); // Limpar CPF de formatações
+      // Buscar usuário pelo CPF cru ou formatado
+      let userQuery = await db.query(`SELECT * FROM usuarios WHERE replace(replace(cpf, '.', ''), '-', '') = ?`, [cleanCpf]);
+      
+      if (userQuery.length === 0) {
+        // Tentar busca direta caso esteja gravado formatado
+        userQuery = await db.query(`SELECT * FROM usuarios WHERE cpf = ?`, [targetCpf.trim()]);
+      }
+      
+      if (userQuery.length === 0) {
+        return res.status(401).json({ error: "Este CPF autenticado pelo Gov.br não possui cadastro de servidor neste RPPS." });
+      }
+
+      const user = userQuery[0];
+      if (!user.ativo) return res.status(403).json({ error: "Usuário inativo no sistema RPPS. Acesso negado." });
+
+      if (!certificadoToken) {
+        // Validar senha do Gov.br (deve bater com a senha local do RPPS)
+        const isMatch = await bcrypt.compare(senha, user.senha);
+        if (!isMatch) {
+          await auditLog(db, null, cleanCpf, 'Desconhecido', 'Auth', 'LOGIN_FALHA_GOVBR', 'usuarios', user.id, null, '{"erro": "Senha incorreta Gov.br"}', req);
+          return res.status(401).json({ error: "Senha incorreta." });
+        }
+      }
+
+      const tipoAutenticacao = certificadoToken ? 'Certificado Digital A3' : 'Usuário/Senha Ouro';
+
+      // Token JWT com claims adicionais de Gov.br
+      const tokenPayload = { 
+        id: user.id, 
+        nome: user.nome, 
+        cpf: user.cpf, 
+        perfil: user.perfil,
+        govBrAutenticado: true,
+        tipoAutenticacao
+      };
+      const token = jwt.sign(tokenPayload, JWT_SECRET, { expiresIn: '8h' });
+
+      // Atualizar último login
+      await db.execute(`UPDATE usuarios SET ultimo_login = CURRENT_TIMESTAMP WHERE id = ?`, [user.id]);
+
+      // Auditoria
+      await auditLog(db, user.id, user.cpf, user.perfil, 'Auth', 'LOGIN_GOVBR', 'usuarios', user.id, null, JSON.stringify({ tipo: tipoAutenticacao }), req);
+
+      res.json({
+        token,
+        user: { 
+          id: user.id, 
+          nome: user.nome, 
+          cpf: user.cpf, 
+          email: user.email, 
+          perfil: user.perfil, 
+          assinatura: user.assinatura_eletronica_token,
+          govBrAutenticado: true,
+          tipoAutenticacao
+        }
+      });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
   // Cadastrar Usuário (Apenas Administrador)
   app.post('/api/users', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
     if (req.user?.perfil !== 'Administrador') {
       return res.status(403).json({ error: "Apenas Administradores podem gerenciar usuários." });
     }
 
-    const { nome, cpf, email, senha, perfil, permissoes } = req.body;
+    const { nome, cpf, email, senha, perfil, telefone, permissoes } = req.body;
     if (!nome || !cpf || !email || !senha || !perfil) {
       return res.status(400).json({ error: "Preencha todos os campos obrigatórios." });
     }
@@ -140,8 +226,8 @@ async function startServer() {
       const signatureToken = `TOKEN_ASSINATURA_${perfil.substring(0,3).toUpperCase()}_SHA256_${Math.random().toString(36).substring(7).toUpperCase()}`;
 
       await db.execute(
-        `INSERT INTO usuarios (nome, cpf, email, senha, perfil, assinatura_eletronica_token) VALUES (?, ?, ?, ?, ?, ?)`,
-        [nome, cpf, email, hashed, perfil, signatureToken]
+        `INSERT INTO usuarios (nome, cpf, email, senha, perfil, assinatura_eletronica_token, telefone) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [nome, cpf, email, hashed, perfil, signatureToken, telefone || '']
       );
 
       const newUsers = await db.query(`SELECT id FROM usuarios WHERE cpf = ?`, [cpf]);
@@ -152,12 +238,12 @@ async function startServer() {
         for (const perm of permissoes) {
           await db.execute(
             `INSERT INTO permissoes (usuario_id, modulo, pode_criar, pode_ler, pode_atualizar, pode_deletar) VALUES (?, ?, ?, ?, ?, ?)`,
-            [newUserId, perm.modulo, perm.pode_criar ? 1 : 0, perm.pode_ler ? 1 : 0, perm.pode_atualizar ? 1 : 0, perm.pode_deletar ? 1 : 0]
+            [newUserId, perm.modulo, !!perm.pode_criar, !!perm.pode_ler, !!perm.pode_atualizar, !!perm.pode_deletar]
           );
         }
       }
 
-      await auditLog(db, req.user.id, req.user.cpf, req.user.perfil, 'Usuarios', 'INCLUSAO', 'usuarios', newUserId, null, JSON.stringify({ nome, perfil, email }), req);
+      await auditLog(db, req.user.id, req.user.cpf, req.user.perfil, 'Usuarios', 'INCLUSAO', 'usuarios', newUserId, null, JSON.stringify({ nome, perfil, email, telefone }), req);
 
       res.status(201).json({ message: "Usuário cadastrado com sucesso!", userId: newUserId });
     } catch (err: any) {
@@ -168,7 +254,7 @@ async function startServer() {
   // Listar Usuários
   app.get('/api/users', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
     try {
-      const users = await db.query(`SELECT id, nome, cpf, email, perfil, ativo, ultimo_login FROM usuarios`);
+      const users = await db.query(`SELECT id, nome, cpf, email, perfil, ativo, ultimo_login, telefone FROM usuarios`);
       res.json(users);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
@@ -209,7 +295,7 @@ async function startServer() {
     }
 
     const { id } = req.params;
-    const { nome, email, perfil, ativo, permissoes } = req.body;
+    const { nome, email, perfil, ativo, telefone, senha, permissoes, cpf } = req.body;
 
     if (!nome || !email || !perfil) {
       return res.status(400).json({ error: "Preencha todos os campos obrigatórios." });
@@ -217,15 +303,32 @@ async function startServer() {
 
     try {
       // Obter dados anteriores para log de auditoria
-      const oldUsers = await db.query(`SELECT nome, email, perfil, ativo FROM usuarios WHERE id = ?`, [id]);
+      const oldUsers = await db.query(`SELECT nome, email, perfil, ativo, telefone, cpf FROM usuarios WHERE id = ?`, [id]);
       if (oldUsers.length === 0) return res.status(404).json({ error: "Usuário não encontrado." });
       const oldUser = oldUsers[0];
 
+      // Validar CPF único se alterado
+      const finalCpf = cpf ? cpf.trim() : oldUser.cpf;
+      if (finalCpf !== oldUser.cpf) {
+        const existing = await db.query(`SELECT id FROM usuarios WHERE cpf = ? AND id <> ?`, [finalCpf, id]);
+        if (existing.length > 0) {
+          return res.status(400).json({ error: "CPF já cadastrado para outro usuário." });
+        }
+      }
+
       // Atualizar dados principais
-      await db.execute(
-        `UPDATE usuarios SET nome = ?, email = ?, perfil = ?, ativo = ? WHERE id = ?`,
-        [nome, email, perfil, ativo ? 1 : 0, id]
-      );
+      if (senha && senha.trim() !== "") {
+        const hashedSenha = await bcrypt.hash(senha, 10);
+        await db.execute(
+          `UPDATE usuarios SET nome = ?, email = ?, perfil = ?, ativo = ?, telefone = ?, senha = ?, cpf = ? WHERE id = ?`,
+          [nome, email, perfil, !!ativo, telefone || '', hashedSenha, finalCpf, id]
+        );
+      } else {
+        await db.execute(
+          `UPDATE usuarios SET nome = ?, email = ?, perfil = ?, ativo = ?, telefone = ?, cpf = ? WHERE id = ?`,
+          [nome, email, perfil, !!ativo, telefone || '', finalCpf, id]
+        );
+      }
 
       // Atualizar Permissões se fornecido
       if (permissoes && Array.isArray(permissoes)) {
@@ -236,7 +339,7 @@ async function startServer() {
         for (const perm of permissoes) {
           await db.execute(
             `INSERT INTO permissoes (usuario_id, modulo, pode_criar, pode_ler, pode_atualizar, pode_deletar) VALUES (?, ?, ?, ?, ?, ?)`,
-            [id, perm.modulo, perm.pode_criar ? 1 : 0, perm.pode_ler ? 1 : 0, perm.pode_atualizar ? 1 : 0, perm.pode_deletar ? 1 : 0]
+            [id, perm.modulo, !!perm.pode_criar, !!perm.pode_ler, !!perm.pode_atualizar, !!perm.pode_deletar]
           );
         }
       }
@@ -251,7 +354,7 @@ async function startServer() {
         'usuarios',
         parseInt(id),
         JSON.stringify(oldUser),
-        JSON.stringify({ nome, email, perfil, ativo }),
+        JSON.stringify({ nome, email, perfil, ativo, telefone, cpf: finalCpf }),
         req
       );
 
@@ -471,7 +574,7 @@ async function startServer() {
     try {
       await db.execute(
         `INSERT INTO dependentes (segurado_id, nome, cpf, grau_parentesco, data_nascimento, invalidez, estudante) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-        [id, nome, cpf, grau_parentesco, data_nascimento, invalidez ? 1 : 0, estudante ? 1 : 0]
+        [id, nome, cpf, grau_parentesco, data_nascimento, !!invalidez, !!estudante]
       );
 
       const dep = await db.query(`SELECT id FROM dependentes WHERE cpf = ?`, [cpf]);
@@ -957,7 +1060,7 @@ async function startServer() {
             fs.mkdirSync(dir, { recursive: true });
         }
         // Remove mime-type prefix se houver
-        const base64Data = base64Image.replace(/^data:image\/\w+;base64,/, "");
+        const base64Data = base64Image.replace(/^data:[^;]+;base64,/, "");
         fs.writeFileSync(path.join(__dirname, '..', pathStorage), base64Data, 'base64');
       }
 
@@ -994,7 +1097,12 @@ async function startServer() {
 
       if (fs.existsSync(filePath)) {
         const buffer = fs.readFileSync(filePath);
-        const base64Image = `data:image/${file.extensao};base64,${buffer.toString('base64')}`;
+        const extLower = file.extensao.toLowerCase();
+        let mimeType = `image/${extLower}`;
+        if (extLower === 'pdf') {
+          mimeType = 'application/pdf';
+        }
+        const base64Image = `data:${mimeType};base64,${buffer.toString('base64')}`;
         res.json({ base64Image });
       } else {
         // Fallback para o mock se o arquivo físico foi apagado ou não gravado
@@ -1073,7 +1181,7 @@ async function startServer() {
       const aposentados = await db.query(`SELECT COUNT(*) as total FROM segurados WHERE status_funcional = 'APOSENTADO'`);
       const pensionistas = await db.query(`SELECT COUNT(*) as total FROM segurados WHERE status_funcional = 'PENSIONISTA'`);
       const processos = await db.query(`SELECT COUNT(*) as total FROM aposentadorias WHERE status_processo != 'CONCEDIDO'`);
-      const protocolos = await db.query(`SELECT COUNT(*) as total FROM protocolos WHERE status = 'ABERTO' OR status = 'EM_ANDAMENTO'`);
+      const prestadores = await db.query(`SELECT COUNT(*) as total FROM protocolos WHERE status = 'ABERTO' OR status = 'EM_ANDAMENTO'`);
       const documentos = await db.query(`SELECT COUNT(*) as total FROM arquivos WHERE excluido_logico = FALSE`);
 
       res.json({
@@ -1081,9 +1189,119 @@ async function startServer() {
         totalAposentados: aposentados[0].total,
         totalPensionistas: pensionistas[0].total,
         totalProcessosAtivos: processos[0].total,
-        totalProtocolosAbertos: protocolos[0].total,
+        totalProtocolosAbertos: prestadores[0].total,
         totalDocumentosSalvos: documentos[0].total
       });
+    } catch (err: any) {
+      res.status(500).json({ error: err.message });
+    }
+  });
+
+  // Obter Processos Externos do Município de Quixadá - Ceará (MÓDULO 10 / Integração)
+  app.get('/api/external/quixada/processos', authenticateToken, async (req: AuthenticatedRequest, res: Response) => {
+    try {
+      const { dataSearch } = req.query;
+      const currentYear = new Date().getFullYear();
+      
+      let processos = [
+        {
+          id: 101,
+          numero: `TCE-CE-008432/${currentYear}`,
+          assunto: "Prestação de Contas Anual - RPPS Quixadá Previdência",
+          interessado: "Prefeitura Municipal de Quixadá",
+          orgao: "Tribunal de Contas do Estado do Ceará (TCE-CE)",
+          dataLimite: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10),
+          status: "Pendente de Defesa Prévia",
+          urgencia: "CRITICA",
+          documentos: [
+            { id: "ext-101-1", nome: "Parecer_Admissibilidade_TCE.pdf", tamanho: "1.2 MB", data: "12/04/2026", restrito: false, conteudo: "PARECER DE ADMISSIBILIDADE TCE-CE nº 4983/2026\nTrata-se de exame de admissibilidade da prestação de contas do Fundo Municipal de Previdência de Quixadá, exercício de 2025. Conclui-se pelo preenchimento dos pressupostos processuais." },
+            { id: "ext-101-2", nome: "Relatorio_Financeiro_Consolidado.xlsx", tamanho: "4.5 MB", data: "15/04/2026", restrito: true, conteudo: "DEMONSTRATIVO FINANCEIRO E PATRIMONIAL DETALHADO DO RPPS - QUIXADÁ\n[ACESSO AUTENTICADO COM GOV.BR - e-CPF / CERTIFICADO DIGITAL ICP-BRASIL]\nRecursos Totais Garantidores: R$ 124.938.410,23.\nTaxa de Administração Executada: 1.82%.\nSuperávit Técnico Apurado: R$ 4.298.110,45.\nEnquadramento de Carteira de Investimentos: 98.4% de acordo com a Resolução CMN nº 4.963." },
+            { id: "ext-101-3", nome: "Oficio_Notificacao_083_2026.pdf", tamanho: "350 KB", data: "22/04/2026", restrito: false, conteudo: "OFÍCIO DE NOTIFICAÇÃO Nº 083/2026-TCE-CE\nFica notificado o gestor do RPPS de Quixadá para apresentar defesa no prazo improrrogável de 15 dias úteis quanto ao apontamento de divergências nas contas de benefícios por invalidez." }
+          ]
+        },
+        {
+          id: 102,
+          numero: `TCE-CE-012942/${currentYear}`,
+          assunto: "Aposentadoria Especial de Professores do Magistério",
+          interessado: "Instituto de Previdência de Quixadá (QuixadáPrev)",
+          orgao: "2ª Câmara de Julgamento - TCE-CE",
+          dataLimite: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10),
+          status: "Em Instrução de Homologação",
+          urgencia: "MEDIA",
+          documentos: [
+            { id: "ext-102-1", nome: "Certidao_Tempo_Contribuicao_Professora.pdf", tamanho: "2.1 MB", data: "05/03/2026", restrito: false, conteudo: "CERTIDÃO DE TEMPO DE CONTRIBUIÇÃO (CTC)\nServidora: Maria das Dores Holanda.\nCargo: Professora de Educação Básica II.\nTempo total averbado: 25 anos, 3 meses e 10 dias de efetivo magistério." },
+            { id: "ext-102-2", nome: "Laudo_LTCAT_Quixada.pdf", tamanho: "5.8 MB", data: "12/03/2026", restrito: true, conteudo: "LAUDO TÉCNICO DAS CONDIÇÕES AMBIENTAIS DE TRABALHO (LTCAT)\n[ACESSO AUTENTICADO COM GOV.BR - e-CPF / CERTIFICADO DIGITAL ICP-BRASIL]\nAnálise de ruído, calor e agentes biológicos nas escolas municipais de Quixadá. Homologado pelo Engenheiro do Trabalho para comprovação de atividade especial de magistério." }
+          ]
+        },
+        {
+          id: 103,
+          numero: `TCE-CE-020139/${currentYear}`,
+          assunto: "Auditoria Concorrente de Despesas Previdenciárias",
+          interessado: "Fundo Previdenciário Municipal de Quixadá",
+          orgao: "Secretaria de Fiscalização Previdenciária - TCE-CE",
+          dataLimite: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10),
+          status: "Notificação Respondida",
+          urgencia: "SEGURA",
+          documentos: [
+            { id: "ext-103-1", nome: "Ficha_Inscricao_Processo_Fiscal.pdf", tamanho: "800 KB", data: "18/02/2026", restrito: false, conteudo: "FICHA DE ACOMPANHAMENTO DA AUDITORIA TCE-CE\nObjeto: Auditoria concorrente de legalidade e economicidade das despesas previdenciárias do exercício vigente." },
+            { id: "ext-103-2", nome: "Analise_Folha_Pagamento_Restrita.pdf", tamanho: "3.2 MB", data: "20/02/2026", restrito: true, conteudo: "RELATÓRIO DETALHADO DA FOLHA DE PAGAMENTO DE INATIVOS\n[ACESSO AUTENTICADO COM GOV.BR - e-CPF / CERTIFICADO DIGITAL ICP-BRASIL]\nListagem nominal com proventos, gratificações incorporadas e descontos previdenciários de todos os aposentados do RPPS de Quixadá do exercício de 2025." }
+          ]
+        },
+        {
+          id: 104,
+          numero: `TCU-011409/${currentYear}`,
+          assunto: "Tomada de Contas Especial - Recursos Federais Repassados",
+          interessado: "Secretaria de Saúde de Quixadá",
+          orgao: "Tribunal de Contas da União (TCU)",
+          dataLimite: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10),
+          status: "Diligência em Andamento",
+          urgencia: "ATRASADA",
+          documentos: [
+            { id: "ext-104-1", nome: "Instrucao_TCE_Saude.pdf", tamanho: "1.7 MB", data: "01/02/2026", restrito: false, conteudo: "INSTRUÇÃO PRELIMINAR DE TOMADA DE CONTAS ESPECIAL\nIrregularidade detectada na prestação de contas do convênio federal repassado para atenção básica à saúde do município de Quixadá." },
+            { id: "ext-104-2", nome: "Extratos_Bancarios_Detalhados.pdf", tamanho: "8.9 MB", data: "05/02/2026", restrito: true, conteudo: "DEMONSTRATIVO DE FLUXO BANCÁRIO DE CONTAS DE CONVÊNIO\n[ACESSO AUTENTICADO COM GOV.BR - e-CPF / CERTIFICADO DIGITAL ICP-BRASIL]\nExtratos detalhados de movimentação bancária da conta do Convênio MS-Quixadá nº 849/2024. Revela repasses não declarados de fundos públicos federais." }
+          ]
+        }
+      ];
+
+      if (dataSearch) {
+        const searchDateStr = String(dataSearch);
+        const year = searchDateStr.split('-')[0] || currentYear;
+        const formattedDateStr = searchDateStr.split('-').reverse().join('/');
+        
+        processos = [
+          {
+            id: 201,
+            numero: `TCE-CE-00${Math.floor(1000 + Math.random() * 9000)}/${year}`,
+            assunto: "Fiscalização Ordinária de Cargos e Salários da Previdência",
+            interessado: "Instituto de Previdência de Quixadá (QuixadáPrev)",
+            orgao: "Tribunal de Contas do Estado do Ceará (TCE-CE)",
+            dataLimite: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10),
+            status: "Autuado em Tempo Real",
+            urgencia: "MEDIA",
+            documentos: [
+              { id: "ext-201-1", nome: "Relatorio_Fiscalizacao_TCE.pdf", tamanho: "1.8 MB", data: formattedDateStr, restrito: false, conteudo: `RELATÓRIO DE FISCALIZAÇÃO DIRETA TCE-CE\nInstaurado na data de pesquisa ${formattedDateStr}.\nFoco: Regularidade e limites prudenciais da folha de salários do Instituto QuixadáPrev.` },
+              { id: "ext-201-2", nome: "Quadro_Pessoal_Consolidado.xlsx", tamanho: "3.4 MB", data: formattedDateStr, restrito: true, conteudo: `QUADRO DETALHADO DE SERVIDORES ATIVOS E INATIVOS\n[ACESSO AUTENTICADO COM GOV.BR - e-CPF / CERTIFICADO DIGITAL ICP-BRASIL]\nConsolidação nominal de cargos em comissão e servidores concursados na data de ${formattedDateStr}.` }
+            ]
+          },
+          {
+            id: 202,
+            numero: `TCU-00${Math.floor(1000 + Math.random() * 9000)}/${year}`,
+            assunto: "Acompanhamento de Repasse do Fundo de Participação dos Municípios (FPM)",
+            interessado: "Prefeitura Municipal de Quixadá",
+            orgao: "Tribunal de Contas da União (TCU)",
+            dataLimite: new Date(Date.now() + 25 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10),
+            status: "Aguardando Pronunciamento do Gestor",
+            urgencia: "SEGURA",
+            documentos: [
+              { id: "ext-202-1", nome: "Analise_Repasse_FPM.pdf", tamanho: "950 KB", data: formattedDateStr, restrito: false, conteudo: `ANÁLISE DE AUDITORIA TCU DE REPASSES CONSTITUCIONAIS\nVerificação dos critérios de distribuição do FPM na data de ${formattedDateStr}.` }
+            ]
+          }
+        ];
+      }
+
+      await auditLog(db, req.user?.id || 1, req.user?.cpf || '000', req.user?.perfil || 'Consulta', 'Dashboard', 'CONSULTA', 'external_processes', 2311306, null, JSON.stringify({ dataSearch }), req);
+
+      res.json(processos);
     } catch (err: any) {
       res.status(500).json({ error: err.message });
     }

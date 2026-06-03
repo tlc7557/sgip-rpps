@@ -8,16 +8,16 @@
 -- Senha de teste padrão criptografada: 'previdencia123' (Hash bcrypt)
 -- ============================================================================
 
-INSERT INTO usuarios (nome, cpf, email, senha, perfil, ativo, assinatura_eletronica_token) VALUES
-('Carlos Eduardo da Silva', '001.002.003-01', 'admin@previdencia.gov.br', '$2a$10$tZ/n0wYxI4g7M64VwF05.O3j10V3p8R/o5r2h9K0r3c5T0S0U0I0O', 'Administrador', TRUE, 'TOKEN_ASSINATURA_ADMIN_SHA256_A9B'),
-('Maria Tereza de Souza', '001.002.003-02', 'diretor@previdencia.gov.br', '$2a$10$tZ/n0wYxI4g7M64VwF05.O3j10V3p8R/o5r2h9K0r3c5T0S0U0I0O', 'Diretor', TRUE, 'TOKEN_ASSINATURA_DIRETOR_SHA256_F8C'),
-('Procurador Geral Dr. André', '001.002.003-03', 'procurador@previdencia.gov.br', '$2a$10$tZ/n0wYxI4g7M64VwF05.O3j10V3p8R/o5r2h9K0r3c5T0S0U0I0O', 'Procurador', TRUE, 'TOKEN_ASSINATURA_PROC_SHA256_X4R'),
-('Joana Darc de Oliveira', '001.002.003-04', 'rh@previdencia.gov.br', '$2a$10$tZ/n0wYxI4g7M64VwF05.O3j10V3p8R/o5r2h9K0r3c5T0S0U0I0O', 'Recursos Humanos', TRUE, 'TOKEN_ASSINATURA_RH_SHA256_D2B'),
-('Dr. Roberto Martins Custódio', '001.002.003-05', 'juridico@previdencia.gov.br', '$2a$10$tZ/n0wYxI4g7M64VwF05.O3j10V3p8R/o5r2h9K0r3c5T0S0U0I0O', 'Jurídico', TRUE, 'TOKEN_ASSINATURA_JUR_SHA256_Z7E'),
-('Geraldo Ferreira dos Santos', '001.002.003-06', 'financeiro@previdencia.gov.br', '$2a$10$tZ/n0wYxI4g7M64VwF05.O3j10V3p8R/o5r2h9K0r3c5T0S0U0I0O', 'Financeiro', TRUE, 'TOKEN_ASSINATURA_FIN_SHA256_L9W'),
-('Cláudia Roberta Mendes', '001.002.003-07', 'protocolo@previdencia.gov.br', '$2a$10$tZ/n0wYxI4g7M64VwF05.O3j10V3p8R/o5r2h9K0r3c5T0S0U0I0O', 'Protocolo', TRUE, 'TOKEN_ASSINATURA_PROT_SHA256_P8Q'),
-('Marcos Antônio Scanner', '001.002.003-08', 'digitalizacao@previdencia.gov.br', '$2a$10$tZ/n0wYxI4g7M64VwF05.O3j10V3p8R/o5r2h9K0r3c5T0S0U0I0O', 'Digitalização', TRUE, 'TOKEN_ASSINATURA_DIG_SHA256_M6G'),
-('Ana Lúcia Ribeiro', '001.002.003-09', 'consulta@previdencia.gov.br', '$2a$10$tZ/n0wYxI4g7M64VwF05.O3j10V3p8R/o5r2h9K0r3c5T0S0U0I0O', 'Consulta', TRUE, NULL);
+INSERT INTO usuarios (nome, cpf, email, senha, perfil, ativo, assinatura_eletronica_token, telefone) VALUES
+('Carlos Eduardo da Silva', '001.002.003-01', 'admin@previdencia.gov.br', '$2a$10$tZ/n0wYxI4g7M64VwF05.O3j10V3p8R/o5r2h9K0r3c5T0S0U0I0O', 'Administrador', TRUE, 'TOKEN_ASSINATURA_ADMIN_SHA256_A9B', '(85) 99999-9991'),
+('Maria Tereza de Souza', '001.002.003-02', 'diretor@previdencia.gov.br', '$2a$10$tZ/n0wYxI4g7M64VwF05.O3j10V3p8R/o5r2h9K0r3c5T0S0U0I0O', 'Diretor', TRUE, 'TOKEN_ASSINATURA_DIRETOR_SHA256_F8C', '(85) 99999-9992'),
+('Procurador Geral Dr. André', '001.002.003-03', 'procurador@previdencia.gov.br', '$2a$10$tZ/n0wYxI4g7M64VwF05.O3j10V3p8R/o5r2h9K0r3c5T0S0U0I0O', 'Procurador', TRUE, 'TOKEN_ASSINATURA_PROC_SHA256_X4R', '(85) 99999-9993'),
+('Joana Darc de Oliveira', '001.002.003-04', 'rh@previdencia.gov.br', '$2a$10$tZ/n0wYxI4g7M64VwF05.O3j10V3p8R/o5r2h9K0r3c5T0S0U0I0O', 'Recursos Humanos', TRUE, 'TOKEN_ASSINATURA_RH_SHA256_D2B', '(85) 99999-9994'),
+('Dr. Roberto Martins Custódio', '001.002.003-05', 'juridico@previdencia.gov.br', '$2a$10$tZ/n0wYxI4g7M64VwF05.O3j10V3p8R/o5r2h9K0r3c5T0S0U0I0O', 'Jurídico', TRUE, 'TOKEN_ASSINATURA_JUR_SHA256_Z7E', '(85) 99999-9995'),
+('Geraldo Ferreira dos Santos', '001.002.003-06', 'financeiro@previdencia.gov.br', '$2a$10$tZ/n0wYxI4g7M64VwF05.O3j10V3p8R/o5r2h9K0r3c5T0S0U0I0O', 'Financeiro', TRUE, 'TOKEN_ASSINATURA_FIN_SHA256_L9W', '(85) 99999-9996'),
+('Cláudia Roberta Mendes', '001.002.003-07', 'protocolo@previdencia.gov.br', '$2a$10$tZ/n0wYxI4g7M64VwF05.O3j10V3p8R/o5r2h9K0r3c5T0S0U0I0O', 'Protocolo', TRUE, 'TOKEN_ASSINATURA_PROT_SHA256_P8Q', '(85) 99999-9997'),
+('Marcos Antônio Scanner', '001.002.003-08', 'digitalizacao@previdencia.gov.br', '$2a$10$tZ/n0wYxI4g7M64VwF05.O3j10V3p8R/o5r2h9K0r3c5T0S0U0I0O', 'Digitalização', TRUE, 'TOKEN_ASSINATURA_DIG_SHA256_M6G', '(85) 99999-9998'),
+('Ana Lúcia Ribeiro', '001.002.003-09', 'consulta@previdencia.gov.br', '$2a$10$tZ/n0wYxI4g7M64VwF05.O3j10V3p8R/o5r2h9K0r3c5T0S0U0I0O', 'Consulta', TRUE, NULL, '(85) 99999-9999');
 
 -- Injetar Permissões Padrão por Módulo
 INSERT INTO permissoes (usuario_id, modulo, pode_criar, pode_ler, pode_atualizar, pode_deletar) VALUES
