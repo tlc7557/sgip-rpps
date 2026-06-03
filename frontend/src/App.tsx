@@ -99,8 +99,8 @@ export default function App() {
   const [auditoriaLogs, setAuditoriaLogs] = useState<any[]>(DEFAULT_AUDITORIA);
 
   // Login Form
-  const [loginCpf, setLoginCpf] = useState('001.002.003-01');
-  const [loginSenha, setLoginSenha] = useState('previdencia123');
+  const [loginCpf, setLoginCpf] = useState('');
+  const [loginSenha, setLoginSenha] = useState('');
   const [loginError, setLoginError] = useState('');
   const [isGovBrLoginMode, setIsGovBrLoginMode] = useState(false);
 
@@ -2671,16 +2671,6 @@ export default function App() {
                   Entrar com GOV.BR
                 </Button>
 
-                <Divider sx={{ my: 3 }} />
-
-                <Typography variant="caption" display="block" sx={{ color: 'text.secondary' }}>
-                  ⚠️ Senhas padrão de teste: <strong style={{ color: '#14b8a6' }}>previdencia123</strong> para todos os perfis.
-                </Typography>
-                <Box sx={{ mt: 1, display: 'flex', gap: 1, flexWrap: 'wrap', justifyContent: 'center' }}>
-                  <Chip label="admin (001.002.003-01)" size="small" onClick={() => setLoginCpf('001.002.003-01')} sx={{ cursor: 'pointer' }} />
-                  <Chip label="rh (001.002.003-04)" size="small" onClick={() => setLoginCpf('001.002.003-04')} sx={{ cursor: 'pointer' }} />
-                  <Chip label="digitalização (001.002.003-08)" size="small" onClick={() => setLoginCpf('001.002.003-08')} sx={{ cursor: 'pointer' }} />
-                </Box>
               </Box>
             )}
           </Card>
