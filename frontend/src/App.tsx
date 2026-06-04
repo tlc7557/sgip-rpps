@@ -7,7 +7,7 @@ import {
   Select, MenuItem, FormControl, InputLabel, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper, Chip, Switch, FormControlLabel, Checkbox,
   Dialog, DialogTitle, DialogContent, DialogActions, LinearProgress, CircularProgress, Tab, Tabs,
-  InputAdornment, Tooltip
+  InputAdornment, Tooltip, Alert
 } from '@mui/material';
 import {
   LayoutDashboard, UserCheck, ShieldAlert, FolderOpen, Scan, FileSpreadsheet,
@@ -2570,7 +2570,7 @@ export default function App() {
                   <Typography variant="subtitle2" sx={{ fontWeight: 800 }}>IDENTIFICAÇÃO GOV.BR</Typography>
                 </Box>
 
-                <Tabs value={govBrCertificado ? 1 : 0} onChange={(_, val) => { if (val === 0) setGovBrCertificado(''); else setGovBrCertificado('admin_token'); }} centered sx={{ mb: 2.5 }}>
+                <Tabs value={govBrCertificado ? 1 : 0} onChange={(_, val) => { if (val === 0) setGovBrCertificado(''); else { setGovBrCertificado('admin_token'); setGovBrCpf('001.002.003-01'); } }} centered sx={{ mb: 2.5 }}>
                   <Tab label="CPF e Senha" />
                   <Tab label="Certificado Digital" />
                 </Tabs>
@@ -2612,10 +2612,13 @@ export default function App() {
                     <TextField
                       label="Senha Gov.br"
                       type="password"
-                      fullWidth sx={{ mb: 3 }}
+                      fullWidth sx={{ mb: 2 }}
                       value={govBrSenha}
                       onChange={(e) => setGovBrSenha(e.target.value)}
                     />
+                    <Alert severity="info" sx={{ mb: 3, '& .MuiAlert-message': { fontSize: 11, lineHeight: 1.3 } }}>
+                      <strong>SSO Simulado:</strong> A validação da senha é processada pelo provedor externo do Gov.br. Qualquer senha é aceita para CPFs de servidores ativos cadastrados.
+                    </Alert>
                   </Box>
                 )}
 
@@ -2947,7 +2950,7 @@ export default function App() {
                           <ShieldCheck size={20} style={{ color: '#1351b4' }} /> Autenticação Gov.br (e-CPF ICP-Brasil)
                         </Typography>
                         
-                        <Tabs value={govBrCertificado ? 1 : 0} onChange={(_, val) => { if (val === 0) setGovBrCertificado(''); else setGovBrCertificado('admin_token'); }} sx={{ mb: 3 }}>
+                        <Tabs value={govBrCertificado ? 1 : 0} onChange={(_, val) => { if (val === 0) setGovBrCertificado(''); else { setGovBrCertificado('admin_token'); setGovBrCpf('001.002.003-01'); } }} sx={{ mb: 3 }}>
                           <Tab label="Entrar com CPF e Senha" />
                           <Tab label="Entrar com Certificado Digital" />
                         </Tabs>
@@ -2965,31 +2968,38 @@ export default function App() {
                                   setGovBrCertificado(val);
                                   if (val === 'admin_token') setGovBrCpf('001.002.003-01');
                                   else if (val === 'tiago_token') setGovBrCpf('057.611.763-35');
+                                  else if (val === 'rh_token') setGovBrCpf('001.002.003-04');
                                 }}
                               >
                                 <MenuItem value="admin_token">e-CPF A3 - Carlos Eduardo da Silva (ADMIN)</MenuItem>
                                 <MenuItem value="tiago_token">e-CPF A3 - Tiago de Lima carneiro (ADMIN)</MenuItem>
+                                <MenuItem value="rh_token">e-CPF A3 - Joana Darc de Oliveira (RH)</MenuItem>
                               </Select>
                             </FormControl>
                           </Box>
                         ) : (
-                          <Box sx={{ display: 'flex', gap: 2, mb: 3, flexWrap: 'wrap' }}>
-                            <TextField
-                              label="CPF Gov.br"
-                              size="small"
-                              value={govBrCpf}
-                              onChange={(e) => setGovBrCpf(formatCPF(e.target.value))}
-                              placeholder="000.000.000-00"
-                              sx={{ width: 220 }}
-                            />
-                            <TextField
-                              label="Senha"
-                              type="password"
-                              size="small"
-                              value={govBrSenha}
-                              onChange={(e) => setGovBrSenha(e.target.value)}
-                              sx={{ width: 220 }}
-                            />
+                          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
+                            <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                              <TextField
+                                label="CPF Gov.br"
+                                size="small"
+                                value={govBrCpf}
+                                onChange={(e) => setGovBrCpf(formatCPF(e.target.value))}
+                                placeholder="000.000.000-00"
+                                sx={{ width: 220 }}
+                              />
+                              <TextField
+                                label="Senha"
+                                type="password"
+                                size="small"
+                                value={govBrSenha}
+                                onChange={(e) => setGovBrSenha(e.target.value)}
+                                sx={{ width: 220 }}
+                              />
+                            </Box>
+                            <Alert severity="info" sx={{ maxWidth: 460, '& .MuiAlert-message': { fontSize: 11, lineHeight: 1.3 } }}>
+                              Validação simulada via SSO Gov.br. Qualquer senha é aceita para CPFs de servidores ativos.
+                            </Alert>
                           </Box>
                         )}
 
